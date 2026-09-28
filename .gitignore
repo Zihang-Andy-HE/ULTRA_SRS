@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+build/
+dist/
+models/
+results/
+*.tif
+*.tiff
+*.pt
+*.pkl
+.DS_Store
+acceptance/
+.pytest_cache/

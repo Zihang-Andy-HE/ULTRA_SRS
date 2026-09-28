@@ -1,0 +1,96 @@
+{
+  "ROIs": [
+    {
+      "median_L": 690.5294189453125,
+      "median_P": 1075.941162109375,
+      "median_D": 369.3529357910156,
+      "P_L_ratio": 1.5188629627227783,
+      "D_L_ratio": 0.5201585292816162,
+      "file": "reference_roi_1",
+      "sha256": "d0523487c4559ae298570aa8ae0abd33fa6a0bba6bcfabce13922d54bfb28a46",
+      "L_percentiles": [
+        529.941162109375,
+        578.11767578125,
+        690.5294189453125,
+        851.11767578125,
+        1156.2353515625
+      ],
+      "D_percentiles": [
+        160.58824157714844,
+        256.941162109375,
+        369.3529357910156,
+        497.8235168457031,
+        658.4117431640625
+      ],
+      "G_saturation": 0.0,
+      "B_saturation": 0.0,
+      "G_zero": 0.0,
+      "B_zero": 3.4332275390625e-05,
+      "P_definition": "display proxy L+D, not recovered raw protein or ground truth"
+    },
+    {
+      "median_L": 690.5294189453125,
+      "median_P": 1027.7647705078125,
+      "median_D": 337.23529052734375,
+      "P_L_ratio": 1.4862197637557983,
+      "D_L_ratio": 0.4876658618450165,
+      "file": "reference_roi_2",
+      "sha256": "3deadb4042c7cb369971ec5a9d11bad3f81d7f25b61accfdfb90c6557caa5de6",
+      "L_percentiles": [
+        497.8235168457031,
+        546.0,
+        690.5294189453125,
+        867.1764526367188,
+        1236.5294189453125
+      ],
+      "D_percentiles": [
+        144.5294189453125,
+        240.88235473632812,
+        337.23529052734375,
+        449.6470642089844,
+        578.11767578125
+      ],
+      "G_saturation": 0.0,
+      "B_saturation": 0.0,
+      "G_zero": 0.0,
+      "B_zero": 0.0001068115234375,
+      "P_definition": "display proxy L+D, not recovered raw protein or ground truth"
+    },
+    {
+      "median_L": 578.11767578125,
+      "median_P": 867.176513671875,
+      "median_D": 289.058837890625,
+      "P_L_ratio": 1.4883787631988525,
+      "D_L_ratio": 0.48959827423095703,
+      "file": "reference_roi_3",
+      "sha256": "f92bb768d8dba4264b4fa4417f50e946538c6485a13f2ff9a574317841a88507",
+      "L_percentiles": [
+        240.88235473632812,
+        369.3529357910156,
+        578.11767578125,
+        819.0,
+        1284.7059326171875
+      ],
+      "D_percentiles": [
+        0.0,
+        160.58824157714844,
+        289.058837890625,
+        433.5882263183594,
+        642.3529663085938
+      ],
+      "G_saturation": 0.0,
+      "B_saturation": 0.0,
+      "G_zero": 0.0,
+      "B_zero": 0.021129608154296875,
+      "P_definition": "display proxy L+D, not recovered raw protein or ground truth"
+    }
+  ],
+  "target": {
+    "median_L": 690.5294189453125,
+    "P_L_ratio": 1.4883787631988525,
+    "D_L_ratio": 0.48959827423095703,
+    "G_saturation": 0.0,
+    "B_saturation": 0.0
+  },
+  "warning": "visual references from one acquisition only; P=L+D is censored display proxy"
+}

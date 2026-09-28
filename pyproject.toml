@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools==80.9.0", "wheel==0.45.1"]
+build-backend = "setuptools.build_meta"
+[project]
+name = "ultra-histology"
+version = "0.2.0"
+description = "Auditable three-stage ULTRA virtual histology inference"
+readme = "README.md"
+requires-python = ">=3.10,<3.12"
+dependencies = ["torch==2.5.1", "diffusers==0.32.2", "numpy==2.2.6", "scipy==1.15.3", "tifffile==2025.5.10", "Pillow==11.2.1", "PyYAML==6.0.2", "matplotlib==3.10.3"]
+[project.scripts]
+ultra = "ultra.cli:main"
+ultra-setup = "ultra.setup:main"
+ultra-preview = "ultra.preview:main"
+[tool.setuptools.packages.find]
+where = ["src"]
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.setuptools.package-data]
+ultra = ["data/*.json", "data/configs/*", "data/references/*"]

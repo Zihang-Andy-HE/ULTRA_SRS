@@ -1,0 +1,26 @@
+{
+  "denoise": {
+    "filename": "denoise.pt",
+    "checkpoint_key": "net_model",
+    "sha256": "ceec17e5cf3846c87f869c36af267fa4bdd5cf565a22a33a2c8457c973f009c7",
+    "bytes": 119209610,
+    "parent_sha256": "88298bb7c13195b4a04c6d6304f988225d88754d86342cf7e4f45228be3576e1",
+    "url": "https://github.com/Zihang-Andy-HE/ULTRA_SRS/releases/download/v0.2.0/denoise.pt"
+  },
+  "lipid2protein": {
+    "filename": "lipid2protein.pkl",
+    "checkpoint_key": "G",
+    "sha256": "8d08ab028fac310f1ba89bd3bca8819078445ee035e4b081c999462316b89d74",
+    "bytes": 45569146,
+    "parent_sha256": "c65c0f979674cb0456e7e9ae28e80887f4b901dfdb9934676ca23380ca65ce90",
+    "url": "https://github.com/Zihang-Andy-HE/ULTRA_SRS/releases/download/v0.2.0/lipid2protein.pkl"
+  },
+  "virtual_stain": {
+    "filename": "virtual_stain.pkl",
+    "checkpoint_key": "G_A",
+    "sha256": "c49523742f7295ec19f9f4d1e889d3cbbd9a62d8f4dd27a0770d824e4f804e2f",
+    "bytes": 7871770,
+    "parent_sha256": "cc96bd2065b547b2dde81c97ae6557a1c5d286cd38d9c54332ae44615c902207",
+    "url": "https://github.com/Zihang-Andy-HE/ULTRA_SRS/releases/download/v0.2.0/virtual_stain.pkl"
+  }
+}

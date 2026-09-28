@@ -1,0 +1,15 @@
+{
+  "schema": "ultra.manual.v1",
+  "units": "native_DN",
+  "L": {
+    "low": 0,
+    "high": 2500,
+    "gamma": 1
+  },
+  "D": {
+    "low": 0,
+    "high": 2000,
+    "gamma": 1
+  },
+  "operator": "example: replace with operator ID"
+}

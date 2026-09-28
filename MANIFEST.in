@@ -1,0 +1,7 @@
+include README.md THIRD_PARTY_NOTICES.md requirements-lock.txt model_registry.json
+recursive-include configs *.yaml *.json
+recursive-include references *.json *.csv
+recursive-include docs *.md *.json
+recursive-include examples *.json
+recursive-include tests *.py
+recursive-include src/ultra/data *.json *.yaml *.csv
