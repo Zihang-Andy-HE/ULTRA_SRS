@@ -1,4 +1,4 @@
-"""Unit/contract tests, separate from real GPU acceptance in dev/acceptance.py."""
+"""Unit/contract tests, separate from the real GPU acceptance summarized in docs/validation.json."""
 import copy,json
 from pathlib import Path
 import numpy as np
