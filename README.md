@@ -6,6 +6,28 @@ The core workflow consists of three independent, auditable commands: `ultra deno
 
 Original ULTRA methods, architectures, and pretrained models are the work of **Zhijie Liu and colleagues**. This repository provides inference integration, fixed numerical contracts, calibration, portability, and reproducibility tools. See [Attribution](#attribution) for the original paper and software.
 
+## Example data: G5.tif
+
+**[Download G5.tif from Google Drive](https://drive.google.com/file/d/1bSHDp2jbAhEbBvFMEuqtOOzOPVI2vrYq/view?usp=drive_link)**
+
+The shared example is the current **150-plane G5 dataset**. Save the downloaded file as `G5.tif` in the repository root. Its metadata is provided in [examples/metadata.json](examples/metadata.json).
+
+| Property | Value |
+|---|---|
+| Shape / axes | 150 × 1024 × 1024 / ZYX |
+| Storage / native intensity | uint16 / 12-bit, 0–4095 |
+| Voxel spacing (Z, Y, X) | Approximately 1 × 0.4143204 × 0.4143204 µm |
+| File plane ordinals | 1–150 |
+| Relative Z coordinates | 0–149 µm from the first file plane |
+
+Expected SHA256 of `G5.tif`:
+
+```text
+e5f950f1791433f0a255b70bba77d53a9e8fc1dc1669f72725a1d2103da980b5
+```
+
+Compare the downloaded file's checksum with this value before processing. Data are shared separately from the source repository. See [processing the shared G5 data](#process-the-shared-g5-data) for the current supported command and [data documentation](docs/data.md) for metadata interpretation.
+
 ## Install
 
 Use Python 3.10 or 3.11. From a terminal:
@@ -29,7 +51,7 @@ PyTorch 2.5.1 is pinned. Install a compatible CUDA build when using NVIDIA GPUs.
 
 ## Core workflow: three commands
 
-For an acquisition with a verified mapping to the frozen G5_998 protocol, prepare `work/INPUT.tif` and `work/metadata.json`, then run. The current 150-plane example is described separately below and cannot be used unchanged with this protocol:
+The three-stage CLI requires an acquisition-specific configuration and verified original source-slice mapping. For inputs that meet those requirements, prepare `work/INPUT.tif` and `work/metadata.json`, then run the commands below. For the shared G5 file, use [Process the shared G5 data](#process-the-shared-g5-data); its original source mapping is not established.
 
 ```bash
 cd work
@@ -54,27 +76,22 @@ Stage directories also contain configuration snapshots, metadata, checksummed ma
 
 ### Input metadata and calibration
 
-The supplied configuration is the frozen **G5_998 acquisition protocol**: uint16 TIFF, native intensity range 0–4095, 1024 × 1024 planes, and original source slice IDs 1–998. It is acquisition-specific, not a universal calibration for arbitrary TIFFs.
+The sole public metadata file, [examples/metadata.json](examples/metadata.json), describes the shared 150-plane `G5.tif`. Keep one metadata JSON per actual input. Preserve measured spacing, file-relative coordinates, and any verified original source IDs.
 
-- Keep one metadata JSON per actual input. The sole public example, [examples/metadata.json](examples/metadata.json), now describes the supplied **150-plane G5.tif** by its checksum, dimensions, 12-bit intensity encoding, TIFF-derived spacing, and file-relative coordinates. It replaces the earlier 17-plane and three-plane examples.
-- Preserve genuine source slice IDs, physical spacing, and relative Z positions. A file's plane number or filename alone does not establish its original acquisition slice ID.
-- The default V3 fit requires source slices **49, 239, 499, 801, and 949**. For a supported subset, set representative `calibration.fit_source_slices` in `work/configs/ultra.yaml` **before denoising**. Calibration is pooled once and fixed across the stack.
-- Unknown absolute tissue depth and measured Raman band remain explicit metadata/QC limitations. Sparse selections retain their original relative positions.
+The core pipeline uses an acquisition-specific denoising policy and pooled fixed V3 calibration. Configuration fit slices must be present in a supported input, and calibration is fitted once across selected full planes. Technical details of the existing reference configuration are in [data documentation](docs/data.md#reference-configuration-for-the-core-cli).
 
-### Current G5.tif metadata
+### Process the shared G5 data
 
-The current `examples/metadata.json` describes **150 × 1024 × 1024**, uint16 storage, a 12-bit native range of 0–4095, XY spacing approximately 0.4143204 µm, and Z spacing 1 µm. `file_plane_ordinals` contains 1–150; `z_positions_um` contains 0–149 µm relative to this file's first plane.
+For the current file, `file_plane_ordinals` is 1–150 and `z_positions_um` is 0–149 µm. `acquisition_id` is `G5_150_native`. `source_slices` remains **null** because file ordinals do not establish original acquisition slice IDs. Absolute tissue depth, measured Raman band, and offset correction history remain unknown.
 
-`source_slices` is **null** because correspondence to the original 998-plane acquisition is unknown. `acquisition_id` is `G5_150_native`, a repository identifier for this input, not the old policy ID. Absolute tissue depth, measured Raman band, and offset correction history remain unknown. The core input validator reports this missing mapping explicitly instead of assigning an old depth policy to the new file.
-
-This JSON documents the actual input; it does **not** make the frozen three-command policy valid for a new acquisition. Until original slice mapping and policy applicability are established, use the explicitly exploratory CLI profile below if processing this input. It does not require the desktop GUI, and it inspects the TIFF directly rather than reading the JSON:
+The metadata describes the file accurately; it does not establish applicability of the core acquisition-specific policy. Process this sample with the explicit `native-exploratory` command-line profile. **No desktop GUI is required.** This command reads the TIFF directly and does not consume the metadata JSON:
 
 ```bash
-# From the repository root, after ultra-setup --out work:
+# From the repository root, after downloading G5.tif and running ultra-setup --out work:
 ultra-studio run --input G5.tif --out results/g5_exploratory --profile native-exploratory --weights work/models --planes 1,75,150 --device auto
 ```
 
-Use `--planes all` for all 150 planes; this does not imply full-volume validation. See [data requirements](docs/data.md) for field meanings and [independent checks](docs/G5_validation.md) for the tested scope.
+Use `--planes all` for all 150 planes. This selects a processing scope; it does not imply full-volume validation. The exploratory profile uses a fixed denoising timestep and selected-plane calibration. See [independent checks](docs/G5_validation.md) for the tested scope.
 
 ### Resume and quality control
 
@@ -120,7 +137,7 @@ Inspection reports TIFF dimensions, intensity range, spacing evidence, and missi
 | Profile | Purpose | Contract |
 |---|---|---|
 | `studio` | Replay the archived Studio numerical workflow | Original epoch-100 denoiser, mean equalization, 65535 normalization, file-index depth schedule, eta=1, and SRH formula; at most 200 planes |
-| `native-exploratory` | Explicit transfer to a 12-bit acquisition | SRS weights, fixed user-selected denoising t (default 10), gain=65535/4095, and V3 fitted to selected full planes; separate from the frozen G5_998 protocol |
+| `native-exploratory` | Explicit transfer to a 12-bit acquisition | SRS weights, fixed user-selected denoising t (default 10), gain=65535/4095, and V3 fitted to selected full planes; separate from the core acquisition-specific policy |
 
 For the `studio` profile, download/extract the [original Studio archive](https://doi.org/10.5281/zenodo.18323493), then register its assets:
 
