@@ -27,4 +27,4 @@ The three core commands use the `native-exploratory` profile: fixed denoising ti
 
 Use `ultra denoise --planes 1,75,150` for a pilot, or `--planes all` for the full input. Metadata is checked against the full file before selection. Later stages inherit the selected file ordinals and relative Z positions; no replacement metadata file is needed for a pilot.
 
-The denoising configuration and pooled V3 fit are recorded in every run. `calibration.fit_file_planes` defaults to `"all"` processed planes, or may be an explicit list contained in the selected input. Protein and H&E tiling strides are 64 and 32. The optional Studio CLI can run the same exploratory profile, but uses stride 480 unless dense strides are requested explicitly.
+The denoising configuration and pooled V3 fit are recorded in every run. `calibration.fit_file_planes` defaults to `"all"` processed planes, or may be an explicit list contained in the selected input. Protein and H&E tiling strides are 64 and 32.

@@ -17,12 +17,12 @@ The [metadata example](../examples/metadata.json) was checked against the suppli
 
 ## Current software checks
 
-All 38 unit/contract tests passed under Python 3.11 with the declared core dependency versions. Dependency compatibility checks passed. The installed help commands for `ultra`, each of its three stages, and `ultra-studio` were also checked against the README examples.
+All 31 core unit/contract tests passed under Python 3.11 after simplifying the package.
 
-The Windows PowerShell launchers and interactive GUI were not executed in this validation; their changes remove environment-layout assumptions and translate interface text. No neural model architecture or weight was changed. The core commands now use the explicit native-exploratory policy and file-relative coordinates. Tests cover three-stage orchestration with synthetic model adapters, sparse selection, checksum rejection, changed-selection resume rejection, and completed-output integrity.
+Core tests cover three-stage orchestration with synthetic model adapters, sparse selection, checksum rejection, changed-selection resume rejection, completed-output integrity, process locking, and device selection. No neural model architecture or weight was changed.
 
 ## Single-plane core inference check
 
-The three actual core commands completed on file plane 75 of the supplied TIFF, at full 1024 × 1024 resolution on CPU with the released model weights. The run used fixed t=10, gain=65535/4095, zero algorithmic offset, protein stride 64, and H&E stride 32. V3 was fitted to the selected full plane. All three completed stages passed `--resume` checksum verification; the manual preview rendered the correct file plane and relative Z=74 µm.
+At commit `a00544229c8e0fa595ef31de429415850f93af72`, the three actual core commands completed on file plane 75 of the supplied TIFF, at full 1024 × 1024 resolution on CPU with the released model weights. The run used fixed t=10, gain=65535/4095, zero algorithmic offset, protein stride 64, and H&E stride 32. V3 was fitted to the selected full plane. All three completed stages passed `--resume` checksum verification; the manual preview rendered the correct file plane and relative Z=74 µm.
 
 Denoised lipid, predicted protein, calibrated RGB, and virtual H&E were produced. Their manifests retain exploratory-use and calibration warnings. Output identities and the exact source code hash are recorded in [the machine-readable checks](G5_independent_inspection.json). This is a single-plane execution check, not a full 150-plane run or a measurement of diagnostic accuracy.

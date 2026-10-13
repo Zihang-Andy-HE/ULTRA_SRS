@@ -68,3 +68,15 @@ def write_ome(path,a,m):
         if b.shape!=a.shape and len(a)==1:b=b[None]
         if not f.is_ome or not np.array_equal(a,b): raise RuntimeError('TIFF read-back verification failed')
     os.replace(tmp,path)
+
+
+def parse_planes(value,n):
+    if value=='all':return list(range(1,n+1))
+    values=[]
+    for item in value.split(','):
+        if ':' in item:
+            a,b=map(int,item.split(':'));values.extend(range(a,b+1))
+        else:values.append(int(item))
+    if not values or sorted(set(values))!=values or values[0]<1 or values[-1]>n:
+        raise ValueError('Planes must be unique, increasing, 1-based file ordinals within the TIFF')
+    return values

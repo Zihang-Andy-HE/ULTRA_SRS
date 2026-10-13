@@ -2,7 +2,7 @@
 
 **Command-line SRS processing: denoise → lipid-to-protein prediction → virtual H&E staining.**
 
-The core workflow consists of three independent, auditable commands: `ultra denoise`, `ultra lipid2protein`, and `ultra virtual-stain`. Each stage writes its outputs and provenance for the next stage. CPU and NVIDIA CUDA execution are supported. **Studio, the desktop launcher, the volume viewer, and research scoring are optional extensions.**
+The core workflow consists of three independent, auditable commands: `ultra denoise`, `ultra lipid2protein`, and `ultra virtual-stain`. Each stage writes its outputs and provenance for the next stage. CPU and NVIDIA CUDA execution are supported.
 
 Original ULTRA methods, architectures, and pretrained models are the work of **Zhijie Liu and colleagues**. This repository provides inference integration, fixed numerical contracts, calibration, portability, and reproducibility tools. See [Attribution](#attribution) for the original paper and software.
 
@@ -45,7 +45,7 @@ PyTorch 2.5.1 is pinned. Install a compatible CUDA build when using NVIDIA GPUs.
 
 ## Core workflow: three commands
 
-Run these commands from the repository root after downloading `G5.tif` and preparing `work` with `ultra-setup`. The included metadata and configuration support the current 150-plane input with the explicit **native-exploratory** profile. No Studio GUI is needed.
+Run these commands from the repository root after downloading `G5.tif` and preparing `work` with `ultra-setup`. The included metadata and configuration support the current 150-plane input with the explicit **native-exploratory** profile.
 
 ```bash
 # 1. Denoise three selected full-resolution file planes.
@@ -102,68 +102,9 @@ ultra virtual-stain --from results/02_lipid2protein --out results/03_manual --ma
 
 The preview listens on localhost and shares the batch conversion function. When using a remote compute host, forward the port with `ssh -N -L 8765:127.0.0.1:8765 USER@HOST`.
 
-## Optional: Studio and desktop tools
-
-The core three-command pipeline does not require Studio or its GUI. The following commands are optional alternatives and utilities; examples below run from the repository root with the environment activated.
-
-### Inspect data
-
-```bash
-ultra-studio doctor --out environment.json
-ultra-studio inspect --input INPUT.tif --out inspection.json
-```
-
-Inspection reports TIFF dimensions, intensity range, spacing evidence, and missing source-slice mapping. The exploratory workflow uses the file plane coordinates and does not infer unknown acquisition history.
-
-### Alternative processing profiles
-
-| Profile | Purpose | Contract |
-|---|---|---|
-| `studio` | Replay the archived Studio numerical workflow | Original epoch-100 denoiser, mean equalization, 65535 normalization, file-index depth schedule, eta=1, and SRH formula; at most 200 planes |
-| `native-exploratory` | Explicit transfer to a 12-bit acquisition | SRS weights, fixed user-selected denoising t (default 10), gain=65535/4095, and V3 fitted to selected full planes; same fixed denoising policy as the core CLI; tiling strides can differ |
-
-For the `studio` profile, download/extract the [original Studio archive](https://doi.org/10.5281/zenodo.18323493), then register its assets:
-
-```bash
-ultra-studio register-studio --source "Ultra 3D Studio" --out studio_assets.json
-ultra-studio run --input INPUT.tif --out results/studio --profile studio --assets studio_assets.json --planes 1 --device auto
-```
-
-`--inference-only` permits asset registration without the optional classifier weights. Registration records SHA256 identities; archive authenticity must be established separately. `tools/fetch_studio_assets.py` provides resumable archive downloads.
-
-For exploratory processing using the SRS checkpoints installed by `ultra-setup`:
-
-```bash
-ultra-studio run --input INPUT.tif --out results/native --profile native-exploratory --weights work/models --planes 1 --device auto
-```
-
-Use `--planes all`, an inclusive range such as `1:10`, or increasing comma-separated file ordinals. Both profiles default to stride 480 for protein and H&E tiling. **This changes numerical results relative to the core pipeline's dense strides of 64 and 32.** Set `--protein-stride 64 --he-stride 32` to match the core tiling settings when using `native-exploratory`. No model is retrained.
-
-Studio runs export intermediate OME-TIFFs, calibration, metrics, checksums, thumbnails, and `report.html`. Add `--resume` only with an identical run identity. Unknown physical Z spacing is omitted; sparse plane positions are preserved.
-
-### Desktop launcher, 3D viewer, and research scoring
-
-```bash
-ultra-studio gui
-
-# Optional napari volume viewer:
-python -m pip install -e ".[viewer]"
-ultra-studio view --input results/native/04_virtual_HE.ome.tif
-```
-
-The GUI requires Python with Tk support. Windows users can also run `launch_windows.ps1`, which uses the repository's `.venv` by default or accepts `-Python` for another environment. Choose input/output paths in the interface. The optional `run_G5_pilot.ps1` helper requires explicit `-InputTiff` and `-OutputDirectory` arguments and accepts `-Planes`; it assumes no personal directory layout.
-
-The viewer rejects nonuniform sparse Z selections for physical volume rendering. Without known physical spacing it uses voxel coordinates.
-
-```bash
-ultra-studio score --input HE_at_5um.ome.tif --assets studio_assets.json --out results/score --tumor glioblastoma --z-spacing 5
-```
-
-The original `glioblastoma`, `astrocytoma`, and `oligodendroglioma` classifiers produce overlapping-window binary probability maps for research. They require at least 10 RGB planes at verified 5 µm Z spacing and 120 × 120 XY pixels. Prepare and record any required subsampling; never relabel metadata to imply a different spacing. Scoring uses `eval()` and an explicit softmax dimension, intentionally correcting the original train-mode BatchNorm behavior. It does not provide validated diagnosis or cell segmentation.
-
 ## Attribution
 
-Original methods and pretrained models: [Zhijie Liu et al., Ultrarapid-Deep-3D-Histology](https://github.com/Zhijie-Liu/Ultrarapid-Deep-3D-Histology) and [Ultra 3D Studio, DOI 10.5281/zenodo.18323493](https://doi.org/10.5281/zenodo.18323493).
+Original methods and pretrained models: [Zhijie Liu et al., Ultrarapid-Deep-3D-Histology](https://github.com/Zhijie-Liu/Ultrarapid-Deep-3D-Histology).
 
 > Liu, Z., Li, Y., Chen, L., Wei, M., Wei, M., Sun, Y., Wang, T., Cheng, H., Liu, X., Ji, M., and Shi, L. (2026). *Ultrarapid deep 3D histology enables intraoperative mapping of glioma infiltration*. Cell 189(20), 6543–6560.e8. https://doi.org/10.1016/j.cell.2026.07.026
 

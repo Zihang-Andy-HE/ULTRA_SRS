@@ -59,7 +59,7 @@ def _run_locked(a):
         if m['acquisition_id']!=cfg['denoise']['acquisition_id']: raise ValueError('Input acquisition ID disagrees with configuration')
         input_hash=sha(a.input)
         if m.get('input_sha256') and input_hash!=m['input_sha256']:raise ValueError('Input checksum disagrees with metadata')
-        from .studio import parse_planes
+        from .io import parse_planes
         indices=[i-1 for i in parse_planes(getattr(a,'planes','all'),len(L))]
         m=json.loads(json.dumps(m));m['input_shape']=list(L.shape);L=L[indices]
         m['shape']=list(L.shape)

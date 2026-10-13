@@ -12,9 +12,7 @@ dependencies = ["torch==2.5.1", "diffusers==0.32.2", "numpy==2.2.6", "scipy==1.1
 ultra = "ultra.cli:main"
 ultra-setup = "ultra.setup:main"
 ultra-preview = "ultra.preview:main"
-ultra-studio = "ultra.studio:main"
 [project.optional-dependencies]
-viewer = ["napari[pyqt5]>=0.6,<0.7"]
 test = ["pytest>=8,<10"]
 [tool.setuptools.packages.find]
 where = ["src"]
