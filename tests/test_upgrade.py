@@ -15,7 +15,7 @@ def test_inspection_does_not_invent_z(tmp_path):
     path=tmp_path/'G5.tif';tifffile.imwrite(path,np.ones((3,20,20),np.uint16),imagej=True,resolution=(2,2),metadata={'axes':'ZYX','unit':'micron'})
     result=inspect_tiff(path)
     assert result['voxel_size_um']=={'x':.5,'y':.5,'z':None}
-    assert not result['frozen_default_fit_possible_by_file_ordinal']
+    assert not result['full_plane_shape_supported']
     assert result['source_slice_mapping'].startswith('unknown')
 
 

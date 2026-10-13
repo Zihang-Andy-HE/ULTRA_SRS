@@ -20,7 +20,7 @@ def metrics(a):
 
 def orthogonal(path,a,m):
     # Render each continuous segment separately; gaps are never collapsed into false adjacency.
-    ids=np.array(m['source_slices']); cuts=np.r_[0,np.where(np.diff(ids)!=1)[0]+1,len(ids)]
+    ids=np.array(m['file_plane_ordinals']); cuts=np.r_[0,np.where(np.diff(ids)!=1)[0]+1,len(ids)]
     fig,axs=plt.subplots(len(cuts)-1,3,figsize=(12,3*(len(cuts)-1)),squeeze=False)
     spacing=m['voxel_size_um']; physical=spacing['x'] is not None and spacing['y'] is not None
     for row,(s,e) in enumerate(zip(cuts[:-1],cuts[1:])):
@@ -29,5 +29,5 @@ def orthogonal(path,a,m):
         extents=[[0,w*spacing['x'],0,h*spacing['y']],[0,w*spacing['x'],m['z_positions_um'][e-1]+spacing['z'],m['z_positions_um'][s]],[0,h*spacing['y'],m['z_positions_um'][e-1]+spacing['z'],m['z_positions_um'][s]]] if physical else [None]*3
         for ax,im,name,extent in zip(axs[row],ims,['XY','XZ','YZ'],extents):
             ax.imshow(im,extent=extent,aspect='equal' if physical else 'auto')
-            ax.set_title(f'{name}: source {ids[s]}–{ids[e-1]}');ax.set_xlabel('µm' if physical else 'pixels / slices (XY scale unknown)')
+            ax.set_title(f'{name}: file planes {ids[s]}–{ids[e-1]}');ax.set_xlabel('µm' if physical else 'pixels / slices (XY scale unknown)')
     fig.tight_layout();fig.savefig(path,dpi=150);plt.close(fig)

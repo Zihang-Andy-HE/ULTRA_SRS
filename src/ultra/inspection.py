@@ -39,11 +39,9 @@ def inspect_tiff(path, out=None):
             means=np.mean(arr,axis=(1,2),dtype=np.float64)
             result['plane_means']=means.tolist()
             result['zero_mean_planes']=(np.flatnonzero(means==0)+1).tolist()
-            result['frozen_g5_shape_compatible']=arr.shape[1:]==(1024,1024)
-            result['frozen_default_fit_possible_by_file_ordinal']=arr.shape[0]>=949
+            result['full_plane_shape_supported']=arr.shape[1:]==(1024,1024)
         if spacing['z'] is None:result['warnings'].append('Physical Z spacing requires confirmation')
-        if len(result['shape'])==3 and result['shape'][0]!=998:
-            result['warnings'].append('Not the frozen 998-plane G5 contract; no automatic depth-policy mapping')
+        result['warnings'].append('Original acquisition slice IDs are unknown; file plane ordinals are recorded separately.')
     if out:dump(out,result)
     return result
 

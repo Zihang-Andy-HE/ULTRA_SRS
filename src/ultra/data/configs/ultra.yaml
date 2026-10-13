@@ -1,5 +1,5 @@
 {
-  "schema": "ultra.config.v1",
+  "schema": "ultra.config.v2",
   "assets": {
     "denoise": {
       "path": "../models/denoise.pt",
@@ -15,23 +15,22 @@
     },
     "reference": {
       "path": "../references/v3_reference.json",
-      "sha256": "4fc0a5ea0a94e1ad4d0810f485ed3f7b6a36328e7ae8a7cb4cf5819ff43a96a6"
-    },
-    "policy": {
-      "path": "../references/G5_policy.csv",
-      "sha256": "303ab54c1f7716d6a997d190bc901a8b3f4ab54555d6734558300d361c35bfb8"
+      "sha256": "fe0ad6eddc346f9e0297451692dd357a4fa023d30eec431c1d7e141c66bd2b31"
     }
   },
   "denoise": {
-    "acquisition_id": "G5_998_native",
+    "acquisition_id": "G5_150_native",
     "checkpoint_key": "net_model",
-    "preprocessing": "P2_full_zero",
+    "preprocessing": "native_12bit_fixed_gain",
     "sampler": "interval",
     "stride": 10,
     "eta": 0,
     "terminal_clean": false,
     "seed": 31415,
-    "precision": "FP32 TF32 allowed"
+    "precision": "FP32 TF32 allowed",
+    "gain": 16.003663003663004,
+    "offset": 0,
+    "t": 10
   },
   "lipid2protein": {
     "checkpoint_key": "G",
@@ -44,17 +43,11 @@
   },
   "calibration": {
     "mode": "v3_pooled_fixed",
-    "fit_source_slices": [
-      49,
-      239,
-      499,
-      801,
-      949
-    ],
     "bounds": [
       0.5,
       2.0
-    ]
+    ],
+    "fit_file_planes": "all"
   },
   "virtual_stain": {
     "checkpoint_key": "G_A",
@@ -63,5 +56,6 @@
     "precision": "FP32 TF32 disabled",
     "input": "RGB8 /127.5 -1",
     "blend": "uint8 patch quantization then float32 uniform average and uint8 truncation"
-  }
+  },
+  "profile": "native-exploratory"
 }

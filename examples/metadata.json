@@ -1,7 +1,7 @@
 {
   "sample_id": "G5",
   "acquisition_id": "G5_150_native",
-  "acquisition_id_note": "Repository identifier for this 150-plane input; not a verified link to G5_998_native.",
+  "acquisition_id_note": "Repository identifier for the inspected 150-plane input.",
   "input_file": "G5.tif",
   "input_sha256": "e5f950f1791433f0a255b70bba77d53a9e8fc1dc1669f72725a1d2103da980b5",
   "shape": [
@@ -29,7 +29,7 @@
     "z": "OIR length z #1 agrees with ZSTACK axis step #1 and axis maxSize equals TIFF Z length"
   },
   "z_origin_um": null,
-  "depth_coordinate_reference": "Relative to file plane 1 of this 150-plane TIFF; not absolute tissue depth or original G5_998 source coordinates.",
+  "depth_coordinate_reference": "Relative to file plane 1 of this 150-plane TIFF; not absolute tissue depth.",
   "measured_band_cm_1": null,
   "offset": {
     "applied": null,
@@ -189,7 +189,7 @@
     150
   ],
   "source_slices": null,
-  "source_slice_mapping": "Unknown relationship to the original 998-plane G5 acquisition; do not substitute file plane ordinals.",
+  "source_slice_mapping": "Original acquisition slice IDs are unknown; file plane ordinals are recorded separately.",
   "z_positions_um": [
     0.0,
     1.0,
@@ -342,6 +342,5 @@
     148.0,
     149.0
   ],
-  "frozen_g5_998_compatible": false,
-  "usage_note": "Describes the supplied TIFF. The frozen core depth policy requires a verified original source-slice mapping. For an explicitly exploratory run, use the native-exploratory profile, which inspects the TIFF directly and does not consume this JSON."
+  "usage_note": "Input metadata for the native-exploratory three-command CLI. File plane ordinals define relative coordinates; original source IDs may remain unknown."
 }

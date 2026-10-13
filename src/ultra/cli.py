@@ -32,8 +32,12 @@ def asset_paths(cfg,base):
 
 
 def validate_config(cfg):
-    if cfg.get('schema')!='ultra.config.v1':raise ValueError('Unsupported configuration schema')
-    expected={'denoise':{'checkpoint_key':'net_model','preprocessing':'P2_full_zero','sampler':'interval','stride':10,'eta':0,'terminal_clean':False,'seed':31415,'precision':'FP32 TF32 allowed'},'lipid2protein':{'checkpoint_key':'G','patch':512,'stride':64,'input_scale':4095,'precision':'FP32 TF32 disabled','blend':'uniform float64 accumulation','output':'float32 native DN'},'virtual_stain':{'checkpoint_key':'G_A','patch':512,'stride':32,'precision':'FP32 TF32 disabled','input':'RGB8 /127.5 -1','blend':'uint8 patch quantization then float32 uniform average and uint8 truncation'}}
+    if cfg.get('schema')!='ultra.config.v2':raise ValueError('Unsupported configuration schema')
+    if cfg.get('profile')!='native-exploratory':raise ValueError('Only the native-exploratory profile is supported')
+    if type(cfg['denoise'].get('t'))!=int or not 0<=cfg['denoise']['t']<=999:raise ValueError('Denoise t must be an integer in 0..999')
+    fit=cfg['calibration'].get('fit_file_planes')
+    if fit!='all' and (not isinstance(fit,list) or not fit or any(type(i)!=int or i<1 for i in fit) or sorted(set(fit))!=fit):raise ValueError('Invalid calibration file planes')
+    expected={'denoise':{'checkpoint_key':'net_model','preprocessing':'native_12bit_fixed_gain','gain':65535/4095,'offset':0,'sampler':'interval','stride':10,'eta':0,'terminal_clean':False,'seed':31415,'precision':'FP32 TF32 allowed'},'lipid2protein':{'checkpoint_key':'G','patch':512,'stride':64,'input_scale':4095,'precision':'FP32 TF32 disabled','blend':'uniform float64 accumulation','output':'float32 native DN'},'virtual_stain':{'checkpoint_key':'G_A','patch':512,'stride':32,'precision':'FP32 TF32 disabled','input':'RGB8 /127.5 -1','blend':'uint8 patch quantization then float32 uniform average and uint8 truncation'}}
     for section,values in expected.items():
         if any(cfg[section].get(k)!=v for k,v in values.items()):raise ValueError(f'Unsupported numerical contract: {section}')
     if cfg['calibration']['mode']!='v3_pooled_fixed' or cfg['calibration']['bounds']!=[.5,2.]:raise ValueError('Only selected fixed V3 policy is supported')
@@ -50,13 +54,22 @@ def run(a):
 def _run_locked(a):
     out=Path(a.out).resolve();started=time.time();previous=None
     if a.command=='denoise':
-        config_path=Path(a.config).resolve();cfg=yaml.safe_load(config_path.read_text());assets=asset_paths(cfg,config_path.parent)
+        config_path=Path(a.config).resolve();cfg=yaml.safe_load(config_path.read_text());validate_config(cfg);assets=asset_paths(cfg,config_path.parent)
         m=json.loads(Path(a.metadata).read_text());L=read_stack(a.input);validate_input(L,m)
-        if m['acquisition_id']!=cfg['denoise']['acquisition_id']: raise ValueError('G5 depth policy cannot silently apply to a different acquisition')
-        identity={'input':sha(a.input),'metadata':sha(a.metadata),'config':sha(config_path)};warnings=[]
+        if m['acquisition_id']!=cfg['denoise']['acquisition_id']: raise ValueError('Input acquisition ID disagrees with configuration')
+        input_hash=sha(a.input)
+        if m.get('input_sha256') and input_hash!=m['input_sha256']:raise ValueError('Input checksum disagrees with metadata')
+        from .studio import parse_planes
+        indices=[i-1 for i in parse_planes(getattr(a,'planes','all'),len(L))]
+        m=json.loads(json.dumps(m));m['input_shape']=list(L.shape);L=L[indices]
+        m['shape']=list(L.shape)
+        for key in ['file_plane_ordinals','z_positions_um']:
+            m[key]=[m[key][i] for i in indices]
+        if m.get('source_slices') is not None:m['source_slices']=[m['source_slices'][i] for i in indices]
+        identity={'input':sha(a.input),'metadata':sha(a.metadata),'config':sha(config_path),'file_planes':m['file_plane_ordinals']};warnings=['Exploratory processing: fixed denoising timestep; no diagnostic validation']
     else:
         upstream=Path(a.from_dir).resolve();previous=verified_stage(upstream,'denoise' if a.command=='lipid2protein' else 'lipid2protein')
-        cfg=yaml.safe_load((upstream/'config.resolved.yaml').read_text());assets=asset_paths(cfg,upstream)
+        cfg=yaml.safe_load((upstream/'config.resolved.yaml').read_text());validate_config(cfg);assets=asset_paths(cfg,upstream)
         m=json.loads((upstream/'metadata.json').read_text());warnings=list(previous['warnings'])
         if a.command=='lipid2protein':L=read_stack(upstream/'lipid_denoised.ome.tif')
         else:
@@ -70,7 +83,7 @@ def _run_locked(a):
     if getattr(a,'manual_params',None):
         manual=calibration.validate_manual(json.loads(Path(a.manual_params).read_text()));identity['manual']=sha(a.manual_params)
     if any(v is None for v in m['voxel_size_um'].values()):warnings.append('XY physical size unverified: omitted, no physical aspect claim')
-    if m['z_origin_um'] is None:warnings.append('Absolute z origin unknown: depth is relative to first source slice')
+    if m['z_origin_um'] is None:warnings.append('Absolute z origin unknown: depth is relative to first input file plane')
     if m['measured_band_cm_1'] is None:warnings.append('Measured Raman band metadata unavailable')
     if out.exists() and not (out/'stage.json').exists() and any(p.name!='.lock' for p in out.iterdir()):raise ValueError('Existing files without a stage identity cannot be resumed')
     out.mkdir(parents=True,exist_ok=True)
@@ -79,7 +92,7 @@ def _run_locked(a):
         if old['identity']!=identity:raise ValueError('Resume identity mismatch; use a new output directory')
         if old['execution_status']=='complete':verified_stage(out);print('COMPLETE: verified existing output',out);return
     for d in ['qc','logs','cache','calibration']:(out/d).mkdir(exist_ok=True)
-    state={'schema':'ultra.stage.v1','stage':a.command,'identity':identity,'execution_status':'running','qc_status':'pending','warnings':sorted(set(warnings)),'files':{},'version':__version__}
+    state={'schema':'ultra.stage.v2','profile':cfg['profile'],'stage':a.command,'identity':identity,'execution_status':'running','qc_status':'pending','warnings':sorted(set(warnings)),'files':{},'version':__version__}
     dump(out/'stage.json',state)
     def log(s):
         print(s,flush=True)
@@ -90,15 +103,17 @@ def _run_locked(a):
         (out/'config.resolved.yaml').write_text(yaml.safe_dump(cfg,sort_keys=True));dump(out/'metadata.json',m)
         if previous:dump(out/'upstream_manifest.json',previous)
         if a.command=='denoise':
-            rows=list(csv.DictReader(assets['policy'].open()));policy={int(r['source_slice']):r for r in rows}
-            params={'policy':'G5 P2_full_zero / interval stride10 / eta0 / non-clean endpoint','source_slices':m['source_slices']}
+            policy={k:cfg['denoise'][k] for k in ['gain','offset','t']}
+            params={'profile':cfg['profile'],**policy,'file_plane_ordinals':m['file_plane_ordinals'],'offset_note':'Zero is an algorithm setting, not a measured dark-current correction'}
         elif a.command=='virtual-stain':
             ref=json.loads(assets['reference'].read_text());dump(out/'calibration/reference.json',ref)
             if manual:params=manual
             else:
-                selected=cfg['calibration']['fit_source_slices'];indices=[i for i,z in enumerate(m['source_slices']) if z in selected]
+                selected=cfg['calibration']['fit_file_planes']
+                if selected=='all':selected=m['file_plane_ordinals']
+                indices=[i for i,z in enumerate(m['file_plane_ordinals']) if z in selected]
                 if len(indices)!=len(selected):raise ValueError('Configured calibration slices absent from input')
-                params=calibration.fit_stack(L,P,indices,ref);params['fit_source_slices']=selected
+                params=calibration.fit_stack(L,P,indices,ref);params['fit_file_planes']=selected
                 if params['V3_bounds_hit']:warnings.append('V3 gain/alpha hit bounds')
             dump(out/'calibration/parameters.json',params)
             RGB=np.stack([calibration.rgb(l,p,params,manual is not None) for l,p in zip(L,P)])
@@ -113,24 +128,24 @@ def _run_locked(a):
         outputs=[];metrics=[]
         import torch
         if a.device.startswith('cuda'):torch.cuda.reset_peak_memory_stats()
-        for i,z in enumerate(m['source_slices']):
+        for i,z in enumerate(m['file_plane_ordinals']):
             t=time.time();cache=out/'cache'/f'{z:04d}.npy';record=cache.with_suffix('.json')
             if cache.exists() and record.exists() and sha(cache)==json.loads(record.read_text())['sha256']:
                 v=np.load(cache,allow_pickle=False);cached=True
             else:
                 cached=False
                 if a.command=='denoise':
-                    torch.manual_seed(31415+z);np.random.seed(31415+z);v=models.denoise_plane(net,L[i],policy[z],a.device)
+                    torch.manual_seed(31415+z);np.random.seed(31415+z);v=models.denoise_plane(net,L[i],policy,a.device)
                 elif a.command=='lipid2protein':v=models.l2p_plane(net,L[i],a.device,a.batch)
                 else:v=models.he_plane(net,RGB[i],a.device,a.batch)
                 tmp=cache.with_suffix('.tmp')
                 with tmp.open('wb') as f:np.save(f,v,allow_pickle=False)
-                os.replace(tmp,cache);dump(record,{'sha256':sha(cache),'source_slice':z})
+                os.replace(tmp,cache);dump(record,{'sha256':sha(cache),'file_plane':z})
             expected=L[i].shape+((3,) if a.command=='virtual-stain' else ())
             if v.shape!=expected or not np.isfinite(v).all():raise ValueError('Invalid cached/computed plane')
-            outputs.append(v);row=qc.metrics(v);row.update(source_slice=z,z_um=m['z_positions_um'][i],seconds=time.time()-t,reused=cached)
-            if a.command=='denoise':row.update(t=int(policy[z]['t']),gain=float(policy[z]['gain']))
-            metrics.append(row);log(f'{a.command} source_slice={z} seconds={row["seconds"]:.3f} reused={cached}')
+            outputs.append(v);row=qc.metrics(v);row.update(file_plane=z,z_um=m['z_positions_um'][i],seconds=time.time()-t,reused=cached)
+            if a.command=='denoise':row.update(t=int(policy['t']),gain=float(policy['gain']))
+            metrics.append(row);log(f'{a.command} file_plane={z} seconds={row["seconds"]:.3f} reused={cached}')
         arr=np.stack(outputs)
         name={'denoise':'lipid_denoised.ome.tif','lipid2protein':'protein_predicted.ome.tif','virtual-stain':'virtual_HE.ome.tif'}[a.command]
         write_ome(out/name,arr,m)
@@ -151,11 +166,12 @@ def _run_locked(a):
 
 
 def main():
-    p=argparse.ArgumentParser(description='ULTRA: frozen three-stage inference')
+    p=argparse.ArgumentParser(description='ULTRA: three-stage native exploratory inference')
     sub=p.add_subparsers(dest='command',required=True)
     for name in ['denoise','lipid2protein','virtual-stain']:
         q=sub.add_parser(name);q.add_argument('--out',required=True);q.add_argument('--device',default='auto');q.add_argument('--batch',type=int,default=1);q.add_argument('--resume',action='store_true')
         if name=='denoise':
+            q.add_argument('--planes',default='all',help='Input file positions: all, 1:10, or 1,75,150')
             for k in ['input','metadata','config']:q.add_argument('--'+k,required=True)
         else:q.add_argument('--from',dest='from_dir',required=True)
         if name=='virtual-stain':q.add_argument('--manual-params')

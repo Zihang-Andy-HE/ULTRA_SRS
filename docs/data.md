@@ -18,17 +18,13 @@ e5f950f1791433f0a255b70bba77d53a9e8fc1dc1669f72725a1d2103da980b5
 | `voxel_size_um`, `spacing_evidence` | Z=1 µm and XY approximately 0.4143204 µm, with TIFF/ImageJ/OIR evidence |
 | `file_plane_ordinals` | 1-based positions within this file, 1–150 |
 | `z_positions_um` | 0–149 µm relative to this file's first plane |
-| `source_slices` | Null: mapping to the original 998-plane acquisition is unknown |
+| `source_slices` | Null: original acquisition slice IDs have not been established |
 | `z_origin_um`, `measured_band_cm_1`, `offset` | Absolute depth, measured Raman band, and correction history are unconfirmed |
 
-File plane ordinals are not original acquisition slice IDs. Do not replace `source_slices: null` with 1–150 or rename this acquisition to `G5_998_native` merely to pass validation. The frozen core protocol needs verified original source IDs, applicable acquisition metadata, and calibration fit slices present in the input.
+File plane ordinals and acquisition slice IDs are separate coordinate systems. Unknown fields remain null until supported by acquisition records. The core CLI consumes this metadata and uses file coordinates directly. Original source IDs are optional for the current exploratory profile.
 
-The `native-exploratory` CLI profile can process the TIFF with an explicit transfer policy. It reads the image directly and does not consume this metadata JSON. Its fixed denoising timestep and selected-plane calibration are separate from the frozen core depth policy.
+The three core commands use the `native-exploratory` profile: fixed denoising timestep t=10 by default, gain=65535/4095, and zero algorithmic offset. These settings are exploratory and do not assert a measured depth-dependent calibration. The configuration acquisition ID must match the metadata. If `input_sha256` is present, the actual TIFF must match it.
 
-The former metadata examples described 17 selected original slices and a three-slice pilot (49–51). They were not identical. They have been replaced by the actual input description; historical core test metadata is now an internal unit-test fixture. See [validation](G5_validation.md) for observed properties and the limits of the checks.
+Use `ultra denoise --planes 1,75,150` for a pilot, or `--planes all` for the full input. Metadata is checked against the full file before selection. Later stages inherit the selected file ordinals and relative Z positions; no replacement metadata file is needed for a pilot.
 
-## Reference configuration for the core CLI
-
-The bundled `configs/ultra.yaml` retains the historical `G5_998_native` numerical contract: uint16 input in 0–4095, 1024 × 1024 XY planes, and verified original slice IDs 1–998. The default pooled V3 fit selects original source slices 49, 239, 499, 801, and 949. For a supported subset, choose representative `calibration.fit_source_slices` that are actually present, before starting denoising.
-
-Those identifiers describe the reference policy, not the shared 150-plane dataset. Updating the data download or its metadata does not recalibrate this policy. The current shared file uses the explicitly exploratory profile documented in the README until applicability of a core acquisition policy is established.
+The denoising configuration and pooled V3 fit are recorded in every run. `calibration.fit_file_planes` defaults to `"all"` processed planes, or may be an explicit list contained in the selected input. Protein and H&E tiling strides are 64 and 32. The optional Studio CLI can run the same exploratory profile, but uses stride 480 unless dense strides are requested explicitly.

@@ -44,7 +44,7 @@ def create_server(stage,port=8765):
                 if type(i)!=int or not 0<=i<len(L):raise ValueError('Invalid plane index')
                 params=validate_manual(data['params']);rgb=manual_rgb(L[i],P[i],params)
                 b=io.BytesIO();Image.fromarray(rgb).save(b,format='PNG')
-                result={'png':base64.b64encode(b.getvalue()).decode(),'source_slice':metadata['source_slices'][i],'relative_z_um':metadata['z_positions_um'][i],'parameters':params,'upper_saturation':{c:float((rgb[...,j]>=255).mean()) for c,j in [('L',1),('D',2)]},'lower_clipped':{c:float((rgb[...,j]==0).mean()) for c,j in [('L',1),('D',2)]}}
+                result={'png':base64.b64encode(b.getvalue()).decode(),'file_plane':metadata['file_plane_ordinals'][i],'relative_z_um':metadata['z_positions_um'][i],'parameters':params,'upper_saturation':{c:float((rgb[...,j]>=255).mean()) for c,j in [('L',1),('D',2)]},'lower_clipped':{c:float((rgb[...,j]==0).mean()) for c,j in [('L',1),('D',2)]}}
                 self.send_response(200)
             except Exception as e:result={'error':str(e)};self.send_response(400)
             self.send_header('Content-Type','application/json');self.end_headers();self.wfile.write(json.dumps(result).encode())

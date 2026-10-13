@@ -98,7 +98,7 @@ def pipeline(a):
                 print('COMPLETE: verified existing workflow',flush=True);return old
         elif any(p.name!='.lock' for p in out.iterdir()):raise ValueError('Unidentified output directory is not resumable')
         state={'schema':'ultra.workflow.v1','version':__version__,'identity':identity,'status':'running',
-               'warnings':info['warnings']+(['Exploratory transfer: no G5_998 depth mapping; no diagnostic validation'] if a.profile!='studio' else ['Original Studio normalization, schedule and stochastic sampler; seeded per file plane for reproducibility']),
+               'warnings':info['warnings']+(['Exploratory processing: fixed denoising timestep; no diagnostic validation'] if a.profile!='studio' else ['Original Studio normalization, schedule and stochastic sampler; seeded per file plane for reproducibility']),
                'files':{},'stages':{}}
         started=time.perf_counter();dump(manifest,state);dump(out/'input_inspection.json',info)
         try:

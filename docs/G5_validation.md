@@ -1,45 +1,28 @@
-# G5 validation
+# G5 input checks
 
-Validation records distinguish the frozen G5_998 command-line protocol from a separate 150-plane TIFF. Input filenames alone do not establish acquisition identity or original source slice mapping. Test data are not included in this repository.
-
-## Independent input check
-
-Inspected the separately supplied `G5.tif` on 2026-10-13. The [machine-readable inspection](G5_independent_inspection.json) records the input checksum, TIFF-derived spacing evidence, intensity range, and per-plane means without personal filesystem paths.
+The separately supplied 150-plane `G5.tif` was inspected on 2026-10-13. The [machine-readable inspection](G5_independent_inspection.json) records its content checksum, TIFF-derived spacing evidence, range, and per-plane means without personal filesystem paths.
 
 | Property | Observed value |
 |---|---|
 | Shape / axes | 150 × 1024 × 1024 / ZYX |
-| Storage / range | uint16 / 0–4095 |
+| Storage / native range | uint16 / 12-bit, 0–4095 |
 | XY spacing | Approximately 0.4143204 µm from ImageJ units and TIFF resolution |
 | Z spacing | 1 µm; OIR ZSTACK step, length, and plane count agree |
 | Zero-mean planes | None |
-| Original source slice mapping | Unknown |
-| Default frozen calibration fit | Cannot be established from file ordinals |
+| Original acquisition slice IDs | Unknown |
 
-Independent checks also passed on file planes 1, 75, and 150: OME-TIFF export/readback preserved every pixel and relative Z positions 0, 74, and 149 µm. A contiguous `PhysicalSizeZ` was correctly omitted for this sparse selection. The two historical subset metadata examples were rejected with `Invalid original slice mapping` when applied unchanged to the full 150-plane input.
+File planes 1, 75, and 150 passed an OME-TIFF export/readback check: every pixel and relative Z positions 0, 74, and 149 µm were preserved. A contiguous `PhysicalSizeZ` was correctly omitted for this sparse selection.
 
-This confirms TIFF readability, shape, intensity range, metadata evidence, and sparse export behavior. It does not establish correspondence to the original 998-plane G5 acquisition. The historical three-plane and 17-plane metadata examples cannot describe this 150-plane input unchanged. The single current [metadata example](../examples/metadata.json) instead records this input and leaves original source mapping null. Its SHA256, dimensions, dtype, observed range, file ordinals, relative Z coordinates, and embedded 12-bit OIR record were checked against the supplied TIFF. The frozen input validator explicitly rejects the unknown original source mapping; a regression test also confirms that valid historical metadata remains accepted. No original slice mapping was invented, and no core depth-policy inference or full-volume neural inference was performed on this file.
+The [metadata example](../examples/metadata.json) was checked against the supplied TIFF for SHA256, dimensions, dtype, intensity range, file ordinals, relative Z coordinates, and the embedded 12-bit OIR record. These checks cover input properties and file I/O. The separate real-model run below covers one plane; no full-volume neural inference or clinical validation was performed.
 
 ## Current software checks
 
-All 31 unit/contract tests passed under Python 3.11 with the declared core dependency versions. Dependency compatibility checks passed. The installed help commands for `ultra`, each of its three stages, and `ultra-studio` were also checked against the README examples.
+All 38 unit/contract tests passed under Python 3.11 with the declared core dependency versions. Dependency compatibility checks passed. The installed help commands for `ultra`, each of its three stages, and `ultra-studio` were also checked against the README examples.
 
-The Windows PowerShell launchers and interactive GUI were not executed in this validation; their changes remove environment-layout assumptions and translate interface text. No neural model architecture, weight, or core numerical contract was changed.
+The Windows PowerShell launchers and interactive GUI were not executed in this validation; their changes remove environment-layout assumptions and translate interface text. No neural model architecture or weight was changed. The core commands now use the explicit native-exploratory policy and file-relative coordinates. Tests cover three-stage orchestration with synthetic model adapters, sparse selection, checksum rejection, changed-selection resume rejection, and completed-output integrity.
 
-## Reported v0.3 development checks
+## Single-plane core inference check
 
-The v0.3 source package reported 29 passing unit/contract tests, processing of file planes 1, 75, and 150, and an additional ten-plane volume sampled at 5 µm. It reported no full 150-plane neural inference or matched H&E ground truth. The detailed artifacts supporting those earlier claims are not included in this source distribution; these figures are historical reports, not results of the independent input check.
+The three actual core commands completed on file plane 75 of the supplied TIFF, at full 1024 × 1024 resolution on CPU with the released model weights. The run used fixed t=10, gain=65535/4095, zero algorithmic offset, protein stride 64, and H&E stride 32. V3 was fitted to the selected full plane. All three completed stages passed `--resume` checksum verification; the manual preview rendered the correct file plane and relative Z=74 µm.
 
-Reported Studio comparison: exact denoise, protein, and RGB arrays; virtual H&E maximum difference 1/255 and MAE 0.009112. The original summary did not specify the MAE scale.
-
-| Model | Reported scope |
-|---|---|
-| glioblastoma | One 10 × 120 × 120 spatial window at 5 µm Z; finite-probability check |
-| astrocytoma | One 10 × 120 × 120 spatial window at 5 µm Z; finite-probability check |
-| oligodendroglioma | One 10 × 120 × 120 spatial window at 5 µm Z; finite-probability check |
-
-These classifier checks do not measure diagnostic accuracy.
-
-## Historical core pipeline acceptance
-
-The [0.2 acceptance record](validation.md) and [machine-readable results](validation.json) describe processing genuine G5 source slices 49–51 with the three core commands. They are separate from the 150-plane input check and must not be treated as validation of an unknown acquisition mapping.
+Denoised lipid, predicted protein, calibrated RGB, and virtual H&E were produced. Their manifests retain exploratory-use and calibration warnings. Output identities and the exact source code hash are recorded in [the machine-readable checks](G5_independent_inspection.json). This is a single-plane execution check, not a full 150-plane run or a measurement of diagnostic accuracy.

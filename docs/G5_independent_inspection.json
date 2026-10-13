@@ -22,7 +22,7 @@
   "candidate_z_note": "OIR axis step #1; confirm axis interpretation before physical analysis",
   "source_slice_mapping": "unknown; file plane ordinal is not original acquisition slice ID",
   "warnings": [
-    "Not the frozen 998-plane G5 contract; no automatic depth-policy mapping"
+    "Original acquisition slice IDs are unknown; file plane ordinals are recorded separately."
   ],
   "range": [
     0.0,
@@ -181,8 +181,6 @@
     463.83740997314453
   ],
   "zero_mean_planes": [],
-  "frozen_g5_shape_compatible": true,
-  "frozen_default_fit_possible_by_file_ordinal": false,
   "input_name": "G5.tif",
   "validation_scope": "Input inspection, rejection of incompatible example metadata, and sparse OME-TIFF roundtrip; no neural inference or original acquisition mapping established.",
   "checks": {
@@ -198,22 +196,96 @@
       149
     ],
     "sparse_physical_size_z_omitted": true,
-    "historical_example_metadata_rejection": {
-      "metadata.json": "Invalid original slice mapping",
-      "pilot_metadata.json": "Invalid original slice mapping"
-    },
     "current_metadata": {
       "file": "examples/metadata.json",
       "sha256_matches_input": true,
       "shape_dtype_range_match": true,
       "file_ordinals_and_relative_z_match": true,
       "oir_native_bit_depth": 12,
-      "frozen_policy_rejection": "Original acquisition slice mapping is unknown; the frozen G5 depth policy requires verified source_slices, not file plane ordinals"
+      "core_input_validation": "Accepted with file-relative coordinates and unknown original source IDs."
     }
   },
   "test_runtime": {
     "python": "3.11",
     "numpy": "2.2.6",
     "tifffile": "2025.5.10"
+  },
+  "full_plane_shape_supported": true,
+  "core_inference_smoke": {
+    "profile": "native-exploratory",
+    "file_planes": [
+      75
+    ],
+    "relative_z_um": [
+      74.0
+    ],
+    "device": "cpu",
+    "denoise_t": 10,
+    "protein_stride": 64,
+    "he_stride": 32,
+    "code_sha256": "90822658f0e0c6d170ee0ccf1dfe2262b29ea07b5a670318e895d97b0c2f9f31",
+    "scope": "One full-resolution plane with real released weights; not a full-volume or diagnostic validation.",
+    "stages": {
+      "denoise": {
+        "status": "complete",
+        "shape": [
+          1,
+          1024,
+          1024
+        ],
+        "dtype": "uint16",
+        "range": [
+          223.0,
+          3085.0
+        ],
+        "output_sha256": "562df903e1bc56ac8a6146ef5747d9dba139a9c31c70c28975ed9d626ad324f5",
+        "warnings": [
+          "Absolute z origin unknown: depth is relative to first input file plane",
+          "Exploratory processing: fixed denoising timestep; no diagnostic validation",
+          "Measured Raman band metadata unavailable"
+        ]
+      },
+      "lipid2protein": {
+        "status": "complete",
+        "shape": [
+          1,
+          1024,
+          1024
+        ],
+        "dtype": "float32",
+        "range": [
+          226.0894012451172,
+          1883.135009765625
+        ],
+        "output_sha256": "4534f1e3b796133d5c8881d6ee6b2b9e48f43e45a5c5c53fb86d5d4ac32c58e4",
+        "warnings": [
+          "Absolute z origin unknown: depth is relative to first input file plane",
+          "Exploratory processing: fixed denoising timestep; no diagnostic validation",
+          "Measured Raman band metadata unavailable"
+        ]
+      },
+      "virtual-stain": {
+        "status": "complete",
+        "shape": [
+          1,
+          1024,
+          1024,
+          3
+        ],
+        "dtype": "uint8",
+        "range": [
+          19.0,
+          249.0
+        ],
+        "output_sha256": "4d401771348c428ad770f1d9eb3deca230b97e1e01f67d4c6add97041c336198",
+        "warnings": [
+          "Absolute z origin unknown: depth is relative to first input file plane",
+          "Exploratory processing: fixed denoising timestep; no diagnostic validation",
+          "Measured Raman band metadata unavailable"
+        ]
+      }
+    },
+    "completed_stage_resume_verified": true,
+    "preview_render_verified": true
   }
 }

@@ -1,4 +1,4 @@
-"""Unit/contract tests, separate from the real GPU acceptance summarized in docs/validation.json."""
+"""Unit tests for input contracts, calibration, and output integrity."""
 import json
 from pathlib import Path
 import numpy as np
@@ -11,25 +11,16 @@ from ultra.cli import verified_stage,validate_config
 R=Path(__file__).resolve().parents[1]
 @pytest.fixture
 def metadata():
-    """Historical three-plane core-contract fixture, separate from the public input."""
-    return {'sample_id': 'G5',
- 'acquisition_id': 'G5_998_native',
- 'axes': 'ZYX',
- 'voxel_size_um': {'z': 1.0, 'y': 0.4143204, 'x': 0.4143204},
- 'z_origin_um': None,
- 'depth_coordinate_reference': 'relative to original source slice 1; not absolute '
-                               'tissue depth',
- 'measured_band_cm_1': None,
- 'dtype': 'uint16',
- 'native_intensity_max': 4095,
- 'offset': {'applied': False,
-            'value': 0,
-            'note': 'Not a measured dark-current correction'},
- 'source_slices': [49, 50, 51],
- 'z_positions_um': [48.0, 49.0, 50.0]}
+    return {
+        'sample_id': 'G5', 'acquisition_id': 'G5_150_native', 'axes': 'ZYX',
+        'voxel_size_um': {'z': 1., 'y': .4143204, 'x': .4143204},
+        'z_origin_um': None, 'measured_band_cm_1': None, 'dtype': 'uint16',
+        'native_intensity_max': 4095, 'offset': {'applied': None, 'value': None},
+        'source_slices': None, 'file_plane_ordinals': [1, 2, 3],
+        'z_positions_um': [0., 1., 2.],
+    }
 
-
-@pytest.mark.parametrize('change',[{'axes':'XYZ'},{'native_intensity_max':65535},{'dtype':'float32'},{'source_slices':[1,1,2]},{'z_positions_um':[48,50,51]},{'voxel_size_um':{'z':1,'y':0,'x':1}}])
+@pytest.mark.parametrize('change',[{'axes':'XYZ'},{'native_intensity_max':65535},{'dtype':'float32'},{'file_plane_ordinals':[1,1,2]},{'z_positions_um':[0,2,3]},{'voxel_size_um':{'z':1,'y':0,'x':1}}])
 def test_reject_invalid_metadata(metadata,change):
     metadata.update(change)
     with pytest.raises(ValueError):validate_input(np.ones((3,1024,1024),np.uint16),metadata)
@@ -54,11 +45,11 @@ def test_manual_formula():
     with pytest.raises(ValueError):validate_manual(p)
 
 def test_sparse_ome_positions(tmp_path,metadata):
-    metadata['source_slices']=[49,50,499];metadata['z_positions_um']=[48,49,498]
+    metadata['file_plane_ordinals']=[1,2,150];metadata['z_positions_um']=[0,1,149]
     a=np.zeros((3,16,20,3),np.uint8);p=tmp_path/'test.ome.tif';write_ome(p,a,metadata)
     with tifffile.TiffFile(p) as f:
         assert f.is_ome and 'PhysicalSizeX="0.4143204"' in f.ome_metadata
-        assert 'PhysicalSizeZ=' not in f.ome_metadata and 'PositionZ="498' in f.ome_metadata
+        assert 'PhysicalSizeZ=' not in f.ome_metadata and 'PositionZ="149' in f.ome_metadata
     assert np.array_equal(read_stack(p),a)
 
 def test_failed_upstream_refused(tmp_path):
@@ -70,13 +61,17 @@ def test_contract_config():
     with pytest.raises(ValueError):validate_config(c)
 
 
-def test_valid_historical_mapping_still_accepted(metadata):
+def test_file_coordinates_accepted_without_source_mapping(metadata):
     validate_input(np.ones((3,1024,1024),np.uint16),metadata)
 
 
-def test_new_acquisition_is_not_silently_mapped_to_frozen_policy():
+def test_current_g5_metadata_accepted():
     m=json.loads((R/'examples/metadata.json').read_text())
-    # Broadcast a plane to avoid allocating a full synthetic input volume.
     a=np.broadcast_to(np.zeros((1024,1024),np.uint16),tuple(m['shape']))
-    with pytest.raises(ValueError,match='Original acquisition slice mapping is unknown'):
-        validate_input(a,m)
+    validate_input(a,m)
+
+
+@pytest.mark.parametrize('t',[-1,1000,1.5,True])
+def test_invalid_exploratory_timestep_rejected(t):
+    c=json.loads((R/'configs/ultra.yaml').read_text());c['denoise']['t']=t
+    with pytest.raises(ValueError,match='Denoise t'):validate_config(c)
