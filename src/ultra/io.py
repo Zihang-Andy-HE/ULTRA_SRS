@@ -29,6 +29,8 @@ def read_stack(path):
 def validate_input(a,m):
     for key in ['sample_id','acquisition_id','axes','voxel_size_um','z_origin_um','measured_band_cm_1','dtype','native_intensity_max','offset','source_slices','z_positions_um']:
         if key not in m: raise ValueError(f'Missing metadata field: {key}')
+    if m['source_slices'] is None:
+        raise ValueError('Original acquisition slice mapping is unknown; the frozen G5 depth policy requires verified source_slices, not file plane ordinals')
     if m['axes']!='ZYX' or a.ndim!=3: raise ValueError('Explicit ZYX input required')
     if str(a.dtype)!=m['dtype'] or a.dtype!=np.uint16: raise ValueError('Input must match declared uint16 dtype')
     if m['native_intensity_max']!=4095: raise ValueError('Selected model policy requires explicit native maximum 4095')

@@ -29,7 +29,7 @@ PyTorch 2.5.1 is pinned. Install a compatible CUDA build when using NVIDIA GPUs.
 
 ## Core workflow: three commands
 
-Prepare `work/INPUT.tif` and `work/metadata.json` for the actual acquisition, then run:
+For an acquisition with a verified mapping to the frozen G5_998 protocol, prepare `work/INPUT.tif` and `work/metadata.json`, then run. The current 150-plane example is described separately below and cannot be used unchanged with this protocol:
 
 ```bash
 cd work
@@ -56,12 +56,25 @@ Stage directories also contain configuration snapshots, metadata, checksummed ma
 
 The supplied configuration is the frozen **G5_998 acquisition protocol**: uint16 TIFF, native intensity range 0–4095, 1024 × 1024 planes, and original source slice IDs 1–998. It is acquisition-specific, not a universal calibration for arbitrary TIFFs.
 
-- Describe the actual input in `metadata.json`; [examples/metadata.json](examples/metadata.json) and [examples/pilot_metadata.json](examples/pilot_metadata.json) are examples for specific supported subsets, not metadata to copy onto unrelated data.
+- Keep one metadata JSON per actual input. The sole public example, [examples/metadata.json](examples/metadata.json), now describes the supplied **150-plane G5.tif** by its checksum, dimensions, 12-bit intensity encoding, TIFF-derived spacing, and file-relative coordinates. It replaces the earlier 17-plane and three-plane examples.
 - Preserve genuine source slice IDs, physical spacing, and relative Z positions. A file's plane number or filename alone does not establish its original acquisition slice ID.
 - The default V3 fit requires source slices **49, 239, 499, 801, and 949**. For a supported subset, set representative `calibration.fit_source_slices` in `work/configs/ultra.yaml` **before denoising**. Calibration is pooled once and fixed across the stack.
 - Unknown absolute tissue depth and measured Raman band remain explicit metadata/QC limitations. Sparse selections retain their original relative positions.
 
-See [data requirements](docs/data.md). A separate 150-plane file named `G5.tif` must not be silently relabeled as the original 998-plane acquisition.
+### Current G5.tif metadata
+
+The current `examples/metadata.json` describes **150 × 1024 × 1024**, uint16 storage, a 12-bit native range of 0–4095, XY spacing approximately 0.4143204 µm, and Z spacing 1 µm. `file_plane_ordinals` contains 1–150; `z_positions_um` contains 0–149 µm relative to this file's first plane.
+
+`source_slices` is **null** because correspondence to the original 998-plane acquisition is unknown. `acquisition_id` is `G5_150_native`, a repository identifier for this input, not the old policy ID. Absolute tissue depth, measured Raman band, and offset correction history remain unknown. The core input validator reports this missing mapping explicitly instead of assigning an old depth policy to the new file.
+
+This JSON documents the actual input; it does **not** make the frozen three-command policy valid for a new acquisition. Until original slice mapping and policy applicability are established, use the explicitly exploratory CLI profile below if processing this input. It does not require the desktop GUI, and it inspects the TIFF directly rather than reading the JSON:
+
+```bash
+# From the repository root, after ultra-setup --out work:
+ultra-studio run --input G5.tif --out results/g5_exploratory --profile native-exploratory --weights work/models --planes 1,75,150 --device auto
+```
+
+Use `--planes all` for all 150 planes; this does not imply full-volume validation. See [data requirements](docs/data.md) for field meanings and [independent checks](docs/G5_validation.md) for the tested scope.
 
 ### Resume and quality control
 

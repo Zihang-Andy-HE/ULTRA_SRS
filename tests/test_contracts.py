@@ -1,5 +1,5 @@
 """Unit/contract tests, separate from the real GPU acceptance summarized in docs/validation.json."""
-import copy,json
+import json
 from pathlib import Path
 import numpy as np
 import pytest,tifffile
@@ -10,7 +10,24 @@ from ultra.cli import verified_stage,validate_config
 
 R=Path(__file__).resolve().parents[1]
 @pytest.fixture
-def metadata():return json.loads((R/'examples/pilot_metadata.json').read_text())
+def metadata():
+    """Historical three-plane core-contract fixture, separate from the public input."""
+    return {'sample_id': 'G5',
+ 'acquisition_id': 'G5_998_native',
+ 'axes': 'ZYX',
+ 'voxel_size_um': {'z': 1.0, 'y': 0.4143204, 'x': 0.4143204},
+ 'z_origin_um': None,
+ 'depth_coordinate_reference': 'relative to original source slice 1; not absolute '
+                               'tissue depth',
+ 'measured_band_cm_1': None,
+ 'dtype': 'uint16',
+ 'native_intensity_max': 4095,
+ 'offset': {'applied': False,
+            'value': 0,
+            'note': 'Not a measured dark-current correction'},
+ 'source_slices': [49, 50, 51],
+ 'z_positions_um': [48.0, 49.0, 50.0]}
+
 
 @pytest.mark.parametrize('change',[{'axes':'XYZ'},{'native_intensity_max':65535},{'dtype':'float32'},{'source_slices':[1,1,2]},{'z_positions_um':[48,50,51]},{'voxel_size_um':{'z':1,'y':0,'x':1}}])
 def test_reject_invalid_metadata(metadata,change):
@@ -51,3 +68,15 @@ def test_failed_upstream_refused(tmp_path):
 def test_contract_config():
     c=json.loads((R/'configs/ultra.yaml').read_text());validate_config(c);c['lipid2protein']['stride']=256
     with pytest.raises(ValueError):validate_config(c)
+
+
+def test_valid_historical_mapping_still_accepted(metadata):
+    validate_input(np.ones((3,1024,1024),np.uint16),metadata)
+
+
+def test_new_acquisition_is_not_silently_mapped_to_frozen_policy():
+    m=json.loads((R/'examples/metadata.json').read_text())
+    # Broadcast a plane to avoid allocating a full synthetic input volume.
+    a=np.broadcast_to(np.zeros((1024,1024),np.uint16),tuple(m['shape']))
+    with pytest.raises(ValueError,match='Original acquisition slice mapping is unknown'):
+        validate_input(a,m)

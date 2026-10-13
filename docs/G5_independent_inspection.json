@@ -186,10 +186,6 @@
   "input_name": "G5.tif",
   "validation_scope": "Input inspection, rejection of incompatible example metadata, and sparse OME-TIFF roundtrip; no neural inference or original acquisition mapping established.",
   "checks": {
-    "example_metadata_rejection": {
-      "metadata.json": "Invalid original slice mapping",
-      "pilot_metadata.json": "Invalid original slice mapping"
-    },
     "sparse_file_planes": [
       1,
       75,
@@ -201,7 +197,19 @@
       74,
       149
     ],
-    "sparse_physical_size_z_omitted": true
+    "sparse_physical_size_z_omitted": true,
+    "historical_example_metadata_rejection": {
+      "metadata.json": "Invalid original slice mapping",
+      "pilot_metadata.json": "Invalid original slice mapping"
+    },
+    "current_metadata": {
+      "file": "examples/metadata.json",
+      "sha256_matches_input": true,
+      "shape_dtype_range_match": true,
+      "file_ordinals_and_relative_z_match": true,
+      "oir_native_bit_depth": 12,
+      "frozen_policy_rejection": "Original acquisition slice mapping is unknown; the frozen G5 depth policy requires verified source_slices, not file plane ordinals"
+    }
   },
   "test_runtime": {
     "python": "3.11",
