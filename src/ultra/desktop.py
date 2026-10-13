@@ -46,8 +46,8 @@ def gui():
     root=tk.Tk();root.title('ULTRA_SRS 0.3 | Original ULTRA models: Zhijie Liu et al.');root.geometry('1000x780')
     fields={};events=queue.Queue();process=[None]
     frame=ttk.Frame(root,padding=14);frame.pack(fill='both',expand=True)
-    ttk.Label(frame,text='ULTRA_SRS — 数据检查、处理与结果查看',font=('Microsoft YaHei UI',16)).pack(anchor='w')
-    ttk.Label(frame,text='原始算法与模型：Zhijie Liu 等 / Ultrarapid-Deep-3D-Histology · 本地研究流程').pack(anchor='w',pady=(4,12))
+    ttk.Label(frame,text='ULTRA_SRS - Inspect, process and view',font=('TkDefaultFont',16)).pack(anchor='w')
+    ttk.Label(frame,text='Original methods and models: Zhijie Liu et al. / Ultrarapid-Deep-3D-Histology').pack(anchor='w',pady=(4,12))
     def field(label,key,default='',directory=False):
         row=ttk.Frame(frame);row.pack(fill='x',pady=3)
         ttk.Label(row,text=label,width=24).pack(side='left');var=tk.StringVar(value=default);fields[key]=var
@@ -55,27 +55,25 @@ def gui():
         def browse():
             path=filedialog.askdirectory() if directory else filedialog.askopenfilename()
             if path:var.set(path)
-        ttk.Button(row,text='浏览',command=browse).pack(side='left',padx=5)
+        ttk.Button(row,text='Browse',command=browse).pack(side='left',padx=5)
     base=Path.cwd()
-    if (base/'G5.tif').exists():default=str(base/'G5.tif')
-    else:default=''
-    field('输入 TIFF','input',default)
-    field('输出目录（新建）','out',str(base/'results'/'new_run'),True)
-    field('Studio 权重清单 JSON','assets',str(base/'studio_assets.json'))
-    field('ULTRA_SRS 权重目录','weights',str(base/'weights_srs'),True)
+    field('Input TIFF','input')
+    field('Output directory (new)','out',str(base/'results'/'new_run'),True)
+    field('Studio asset manifest JSON','assets',str(base/'studio_assets.json'))
+    field('ULTRA_SRS weights directory','weights',str(base/'work'/'models'),True)
     controls=ttk.Frame(frame);controls.pack(fill='x',pady=10)
-    fields['profile']=tk.StringVar(value='studio');fields['planes']=tk.StringVar(value='1,75,150');fields['z']=tk.StringVar(value='')
+    fields['profile']=tk.StringVar(value='studio');fields['planes']=tk.StringVar(value='1');fields['z']=tk.StringVar(value='')
     fields['device']=tk.StringVar(value='auto');fields['resume']=tk.BooleanVar(value=False)
-    for label,key,values in [('流程','profile',['studio','native-exploratory']),('设备','device',['auto','cpu','cuda:0'])]:
+    for label,key,values in [('Profile','profile',['studio','native-exploratory']),('Device','device',['auto','cpu','cuda:0'])]:
         ttk.Label(controls,text=label).pack(side='left');ttk.Combobox(controls,textvariable=fields[key],values=values,state='readonly',width=20).pack(side='left',padx=6)
-    ttk.Label(controls,text='文件层号').pack(side='left');ttk.Entry(controls,textvariable=fields['planes'],width=15).pack(side='left')
-    ttk.Label(controls,text='Z µm（可留空）').pack(side='left');ttk.Entry(controls,textvariable=fields['z'],width=6).pack(side='left')
-    ttk.Checkbutton(frame,text='恢复已中断的相同参数任务（缓存校验）',variable=fields['resume']).pack(anchor='w')
-    ttk.Label(frame,text='Studio 使用原始 16 位流程；native-exploratory 为 12 位探索性迁移。此界面用 480 像素步长快速试跑。').pack(anchor='w',pady=4)
+    ttk.Label(controls,text='File planes').pack(side='left');ttk.Entry(controls,textvariable=fields['planes'],width=15).pack(side='left')
+    ttk.Label(controls,text='Z um (optional)').pack(side='left');ttk.Entry(controls,textvariable=fields['z'],width=6).pack(side='left')
+    ttk.Checkbutton(frame,text='Resume an interrupted run with identical parameters (verify cache)',variable=fields['resume']).pack(anchor='w')
+    ttk.Label(frame,text='Studio uses the original 16-bit workflow; native-exploratory transfers to 12-bit data. GUI stride: 480 pixels.').pack(anchor='w',pady=4)
     buttons=ttk.Frame(frame);buttons.pack(fill='x',pady=8)
-    text=tk.Text(frame,height=18,wrap='word',font=('Consolas',10));text.pack(fill='both',expand=True)
+    text=tk.Text(frame,height=18,wrap='word',font=('TkFixedFont',10));text.pack(fill='both',expand=True)
     def start(args):
-        if process[0] and process[0].poll() is None:messagebox.showinfo('任务运行中','请等待当前任务或停止后再运行。');return
+        if process[0] and process[0].poll() is None:messagebox.showinfo('Run in progress','Wait for the current run or stop it before starting another.');return
         command=[sys.executable,'-u','-m','ultra.studio',*args]
         text.insert('end',' '.join(command)+'\n')
         process[0]=subprocess.Popen(command,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,encoding='utf-8',errors='replace',creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
@@ -91,28 +89,28 @@ def gui():
         if fields['resume'].get():args+=['--resume']
         start(args)
     def cancel():
-        if process[0] and process[0].poll() is None:process[0].terminate();events.put('已停止；用相同参数勾选恢复可继续。\n')
+        if process[0] and process[0].poll() is None:process[0].terminate();events.put('Stopped. Select Resume with the same parameters to continue.\n')
     def open_report():
         path=Path(fields['out'].get())/'report.html'
         if path.exists():webbrowser.open(path.resolve().as_uri())
-        else:messagebox.showinfo('尚无报告','处理完成后会生成 report.html。')
+        else:messagebox.showinfo('Report unavailable','Processing generates report.html when complete.')
     def show_volume():
-        path=filedialog.askopenfilename(title='选择 TIFF 体数据')
+        path=filedialog.askopenfilename(title='Select a TIFF volume')
         if path:start(['view','--input',path]+(['--z-spacing',fields['z'].get()] if fields['z'].get() else []))
-    for label,callback in [('环境检查',lambda:start(['doctor'])),('检查 TIFF',lambda:start(['inspect','--input',fields['input'].get()])),('开始处理',run),('停止',cancel),('打开结果',open_report),('3D 查看器',show_volume)]:
+    for label,callback in [('Environment',lambda:start(['doctor'])),('Inspect TIFF',lambda:start(['inspect','--input',fields['input'].get()])),('Run',run),('Stop',cancel),('Open results',open_report),('3D viewer',show_volume)]:
         ttk.Button(buttons,text=label,command=callback).pack(side='left',padx=4)
     scorebar=ttk.Frame(frame);scorebar.pack(fill='x',pady=5)
     tumor=tk.StringVar(value='glioblastoma')
-    ttk.Label(scorebar,text='3D 窗口概率图（研究用，输入为 5 µm H&E）').pack(side='left')
+    ttk.Label(scorebar,text='3D window probabilities (research; 5 um H&E input)').pack(side='left')
     ttk.Combobox(scorebar,textvariable=tumor,values=['glioblastoma','astrocytoma','oligodendroglioma'],state='readonly',width=20).pack(side='left',padx=4)
     def score():
-        path=filedialog.askopenfilename(title='选择 5 µm 间距的 RGB H&E 体数据（至少 10 层）')
+        path=filedialog.askopenfilename(title='Select RGB H&E at 5 um Z spacing (at least 10 planes)')
         if not path:return
-        dest=filedialog.askdirectory(title='选择评分输出的父目录')
+        dest=filedialog.askdirectory(title='Select the parent directory for score output')
         if not dest:return
         start(['score','--input',path,'--assets',fields['assets'].get(),'--out',str(Path(dest)/('score_'+tumor.get())),
                '--tumor',tumor.get(),'--device',fields['device'].get(),'--z-spacing','5'])
-    ttk.Button(scorebar,text='选择 H&E 并评分',command=score).pack(side='left')
+    ttk.Button(scorebar,text='Select H&E and score',command=score).pack(side='left')
     def poll():
         while not events.empty():text.insert('end',events.get());text.see('end')
         root.after(150,poll)

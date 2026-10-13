@@ -1,97 +1,168 @@
-# ULTRA_SRS 0.3 — portable research workstation
+# ULTRA_SRS 0.3
 
-**Original ULTRA methods, architectures and pretrained models are the work of Zhijie Liu and colleagues, not newly trained models from this upgrade.** Please credit and cite their [Ultrarapid-Deep-3D-Histology repository](https://github.com/Zhijie-Liu/Ultrarapid-Deep-3D-Histology), [Ultra 3D Studio archive, DOI 10.5281/zenodo.18323493](https://doi.org/10.5281/zenodo.18323493), and the paper:
+**Command-line SRS processing: denoise → lipid-to-protein prediction → virtual H&E staining.**
+
+The core workflow consists of three independent, auditable commands: `ultra denoise`, `ultra lipid2protein`, and `ultra virtual-stain`. Each stage writes its outputs and provenance for the next stage. CPU and NVIDIA CUDA execution are supported. **Studio, the desktop launcher, the volume viewer, and research scoring are optional extensions.**
+
+Original ULTRA methods, architectures, and pretrained models are the work of **Zhijie Liu and colleagues**. This repository provides inference integration, fixed numerical contracts, calibration, portability, and reproducibility tools. See [Attribution](#attribution) for the original paper and software.
+
+## Install
+
+Use Python 3.10 or 3.11. From a terminal:
+
+```bash
+git clone https://github.com/Zihang-Andy-HE/ULTRA_SRS.git
+cd ULTRA_SRS
+python -m venv .venv
+```
+
+Activate the environment on Linux/macOS with `source .venv/bin/activate`, or in Windows PowerShell with `.\.venv\Scripts\Activate.ps1`. Then install the core package and prepare its working directory:
+
+```bash
+python -m pip install -e .
+ultra-setup --out work
+```
+
+`ultra-setup` downloads the three fixed tensor-only checkpoints, verifies SHA256, and copies the configurations and references into `work`. For offline setup, use `ultra-setup --out work --weights-dir CHECKPOINT_DIRECTORY`. Weights and tissue images are distributed separately from Git source.
+
+PyTorch 2.5.1 is pinned. Install a compatible CUDA build when using NVIDIA GPUs. All three commands accept `--device auto` (the default), `--device cpu`, or `--device cuda:0`; `auto` selects CUDA if available, otherwise CPU. CPU execution can be slow on full volumes.
+
+## Core workflow: three commands
+
+Prepare `work/INPUT.tif` and `work/metadata.json` for the actual acquisition, then run:
+
+```bash
+cd work
+
+# 1. Denoise the measured lipid signal.
+ultra denoise --input INPUT.tif --metadata metadata.json --config configs/ultra.yaml --out results/01_denoise
+
+# 2. Predict protein from the completed denoising stage.
+ultra lipid2protein --from results/01_denoise --out results/02_lipid2protein
+
+# 3. Calibrate full-plane RGB and generate virtual H&E.
+ultra virtual-stain --from results/02_lipid2protein --out results/03_virtual_stain
+```
+
+| Command | Main output | Role |
+|---|---|---|
+| `ultra denoise` | `01_denoise/lipid_denoised.ome.tif` | Apply the fixed acquisition-specific denoising policy |
+| `ultra lipid2protein` | `02_lipid2protein/protein_predicted.ome.tif` | Predict protein and stitch full planes |
+| `ultra virtual-stain` | `03_virtual_stain/virtual_HE.ome.tif` | Apply pooled V3 calibration and virtual staining |
+
+Stage directories also contain configuration snapshots, metadata, checksummed manifests, QC metrics, previews, and logs. Virtual staining saves `rgb_input.ome.tif`, calibration parameters, orthogonal previews, and `report.html`. Protein and H&E are model predictions.
+
+### Input metadata and calibration
+
+The supplied configuration is the frozen **G5_998 acquisition protocol**: uint16 TIFF, native intensity range 0–4095, 1024 × 1024 planes, and original source slice IDs 1–998. It is acquisition-specific, not a universal calibration for arbitrary TIFFs.
+
+- Describe the actual input in `metadata.json`; [examples/metadata.json](examples/metadata.json) and [examples/pilot_metadata.json](examples/pilot_metadata.json) are examples for specific supported subsets, not metadata to copy onto unrelated data.
+- Preserve genuine source slice IDs, physical spacing, and relative Z positions. A file's plane number or filename alone does not establish its original acquisition slice ID.
+- The default V3 fit requires source slices **49, 239, 499, 801, and 949**. For a supported subset, set representative `calibration.fit_source_slices` in `work/configs/ultra.yaml` **before denoising**. Calibration is pooled once and fixed across the stack.
+- Unknown absolute tissue depth and measured Raman band remain explicit metadata/QC limitations. Sparse selections retain their original relative positions.
+
+See [data requirements](docs/data.md). A separate 150-plane file named `G5.tif` must not be silently relabeled as the original 998-plane acquisition.
+
+### Resume and quality control
+
+Add `--resume` to the identical stage command after interruption:
+
+```bash
+ultra denoise --input INPUT.tif --metadata metadata.json --config configs/ultra.yaml --out results/01_denoise --resume
+```
+
+Inputs, configuration, model hashes, code, device, and batch size must match the stored run identity. Cached planes and completed files are verified by checksum. Resume an incomplete upstream stage before running the next command. QC warnings remain in the manifests; invalid inputs and calculation errors fail explicitly.
+
+### Optional manual display calibration
+
+Pooled fixed V3 calibration is the default. To inspect and adjust display ranges/gamma after lipid-to-protein prediction:
+
+```bash
+ultra-preview --from results/02_lipid2protein --port 8765
+```
+
+Open `http://127.0.0.1:8765`, adjust L and D=max(P−L,0), and save the parameter JSON. Replay the saved parameters with:
+
+```bash
+ultra virtual-stain --from results/02_lipid2protein --out results/03_manual --manual-params results/manual_rgb.json
+```
+
+The preview listens on localhost and shares the batch conversion function. When using a remote compute host, forward the port with `ssh -N -L 8765:127.0.0.1:8765 USER@HOST`.
+
+## Optional: Studio and desktop tools
+
+The core three-command pipeline does not require Studio or its GUI. The following commands are optional alternatives and utilities; examples below run from the repository root with the environment activated.
+
+### Inspect data
+
+```bash
+ultra-studio doctor --out environment.json
+ultra-studio inspect --input INPUT.tif --out inspection.json
+```
+
+Inspection reports TIFF dimensions, intensity range, spacing evidence, and missing source-slice mapping. It does not assign an acquisition identity or establish compatibility with the frozen depth policy.
+
+### Alternative processing profiles
+
+| Profile | Purpose | Contract |
+|---|---|---|
+| `studio` | Replay the archived Studio numerical workflow | Original epoch-100 denoiser, mean equalization, 65535 normalization, file-index depth schedule, eta=1, and SRH formula; at most 200 planes |
+| `native-exploratory` | Explicit transfer to a 12-bit acquisition | SRS weights, fixed user-selected denoising t (default 10), gain=65535/4095, and V3 fitted to selected full planes; separate from the frozen G5_998 protocol |
+
+For the `studio` profile, download/extract the [original Studio archive](https://doi.org/10.5281/zenodo.18323493), then register its assets:
+
+```bash
+ultra-studio register-studio --source "Ultra 3D Studio" --out studio_assets.json
+ultra-studio run --input INPUT.tif --out results/studio --profile studio --assets studio_assets.json --planes 1 --device auto
+```
+
+`--inference-only` permits asset registration without the optional classifier weights. Registration records SHA256 identities; archive authenticity must be established separately. `tools/fetch_studio_assets.py` provides resumable archive downloads.
+
+For exploratory processing using the SRS checkpoints installed by `ultra-setup`:
+
+```bash
+ultra-studio run --input INPUT.tif --out results/native --profile native-exploratory --weights work/models --planes 1 --device auto
+```
+
+Use `--planes all`, an inclusive range such as `1:10`, or increasing comma-separated file ordinals. Both profiles default to stride 480 for protein and H&E tiling. **This changes numerical results relative to the core pipeline's dense strides of 64 and 32.** Set `--protein-stride 64 --he-stride 32` to use dense overlap; this does not make the alternative profiles equivalent to the frozen acquisition policy. No model is retrained.
+
+Studio runs export intermediate OME-TIFFs, calibration, metrics, checksums, thumbnails, and `report.html`. Add `--resume` only with an identical run identity. Unknown physical Z spacing is omitted; sparse plane positions are preserved.
+
+### Desktop launcher, 3D viewer, and research scoring
+
+```bash
+ultra-studio gui
+
+# Optional napari volume viewer:
+python -m pip install -e ".[viewer]"
+ultra-studio view --input results/native/04_virtual_HE.ome.tif
+```
+
+The GUI requires Python with Tk support. Windows users can also run `launch_windows.ps1`, which uses the repository's `.venv` by default or accepts `-Python` for another environment. Choose input/output paths in the interface. The optional `run_G5_pilot.ps1` helper requires explicit `-InputTiff` and `-OutputDirectory` arguments and accepts `-Planes`; it assumes no personal directory layout.
+
+The viewer rejects nonuniform sparse Z selections for physical volume rendering. Without known physical spacing it uses voxel coordinates.
+
+```bash
+ultra-studio score --input HE_at_5um.ome.tif --assets studio_assets.json --out results/score --tumor glioblastoma --z-spacing 5
+```
+
+The original `glioblastoma`, `astrocytoma`, and `oligodendroglioma` classifiers produce overlapping-window binary probability maps for research. They require at least 10 RGB planes at verified 5 µm Z spacing and 120 × 120 XY pixels. Prepare and record any required subsampling; never relabel metadata to imply a different spacing. Scoring uses `eval()` and an explicit softmax dimension, intentionally correcting the original train-mode BatchNorm behavior. It does not provide validated diagnosis or cell segmentation.
+
+## Validation
+
+```bash
+python -m pip install -e ".[test]"
+python -m pytest -q
+```
+
+See [G5 validation](docs/G5_validation.md) for the independent input check and the scope of earlier reports. The [0.2 acceptance record](docs/validation.md) and [historical README](docs/upstream_README_0.2.md) describe the previous release. Unit tests, input inspection, neural inference, and diagnostic validation are distinct; no full-volume or clinical validation is implied by a successful unit test.
+
+## Attribution
+
+Original methods and pretrained models: [Zhijie Liu et al., Ultrarapid-Deep-3D-Histology](https://github.com/Zhijie-Liu/Ultrarapid-Deep-3D-Histology) and [Ultra 3D Studio, DOI 10.5281/zenodo.18323493](https://doi.org/10.5281/zenodo.18323493).
 
 > Liu, Z., Li, Y., Chen, L., Wei, M., Wei, M., Sun, Y., Wang, T., Cheng, H., Liu, X., Ji, M., and Shi, L. (2026). *Ultrarapid deep 3D histology enables intraoperative mapping of glioma infiltration*. Cell 189(20), 6543–6560.e8. https://doi.org/10.1016/j.cell.2026.07.026
 
-This local engineering upgrade builds on [Zihang-Andy-HE/ULTRA_SRS](https://github.com/Zihang-Andy-HE/ULTRA_SRS), commit `98ca5078c6f8c39b41da1910b7ac7981894166c7`. Credit that integration for its tensor-only checkpoints, frozen inference contracts, pooled V3 calibration, manual display preview and checksummed stage manifests. The present changes add Windows/CPU operation, acquisition inspection, a desktop launcher, a Studio-compatible workflow, explicit exploratory transfer, original classifier support and reproducible G5 comparisons. They do **not** establish improved diagnostic accuracy or endorsement by the original authors.
+The integration builds on ULTRA_SRS commit `98ca5078c6f8c39b41da1910b7ac7981894166c7`, including its tensor-only checkpoints, frozen inference contracts, pooled V3 calibration, manual preview, and stage manifests. No original-author endorsement or improved diagnostic accuracy is claimed.
 
-## 中文快速开始
-
-当前交付目录为 `D:\HZH\ULTRA`，代码在 `ULTRA_SRS_upgraded`，环境在 `.venv`。直接启动：
-
-```powershell
-cd D:\HZH\ULTRA
-.\.venv\Scripts\python.exe -m ultra.studio gui
-```
-
-也可运行 `ULTRA_SRS_upgraded\launch_windows.ps1`。界面提供文件选择、数据检查、CPU/GPU 选择、切片选择、进度日志、停止、恢复、结果报告、可选 3D 查看器和三种研究用评分。输出目录必须是新目录；继续同一任务时勾选恢复。层号是 **TIFF 内的 1-based 文件层号**，不是另一份 998 层数据的原始层号。
-
-本次 `G5.tif` 实际是 `150 × 1024 × 1024`、uint16、范围 0–4095。XY 由 ImageJ/TIFF resolution 读取，Z 由相符的 OIR `ZSTACK`、`length z #1`、轴步长和层数读取：约 `1 × 0.4143204 × 0.4143204 µm (Z,Y,X)`。绝对组织深度和与仓库 998 层 G5 的对应关系仍未知。
-
-### Three intentionally separate workflows
-
-| Workflow | Purpose | Important contract |
-|---|---|---|
-| `ultra denoise / lipid2protein / virtual-stain` | Existing frozen G5_998 pipeline | Requires genuine source slice mapping and acquisition metadata; unchanged numerical formulas |
-| `ultra-studio run --profile studio` | Archived Studio numerical workflow on CPU/CUDA | Original epoch-100 denoiser, mean equalization, 65535 normalization, depth schedule, eta=1, SRH formula; seeds are recorded |
-| `ultra-studio run --profile native-exploratory` | Explicit transfer of SRS methods to a 12-bit acquisition | SRS weights, fixed user-selected denoise t, gain=65535/4095, pooled V3 fitted to selected full planes; **not** the frozen G5 depth protocol |
-
-Studio uses its original file-index schedule, limited to 200 planes. The new workflow does not pretend this schedule is calibrated to arbitrary physical depths. `native-exploratory` defaults to `t=10`; this is an exploratory setting, not a learned depth policy. It does not retrain any model.
-
-### Installation on another machine
-
-Use Python 3.10 or 3.11. Keep weights separate from source.
-
-```powershell
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -e .
-# Optional volume renderer:
-.\.venv\Scripts\python.exe -m pip install -e ".[viewer]"
-```
-
-On Linux use `.venv/bin/python`. PyTorch 2.5.1 is pinned; install an appropriate CUDA build for GPU use. `auto` chooses CUDA when available, otherwise CPU. CPU was tested locally; GPU memory requirements depend on model and plane size. The previous 24 GiB startup requirement and 20% allocation cap were removed; this does not certify every smaller GPU. CUDA out-of-memory errors remain visible and preserve completed plane caches.
-
-```powershell
-python -m ultra.studio doctor --out environment.json
-python -m ultra.studio inspect --input G5.tif --out G5_inspection.json
-python -m ultra.setup --out work
-```
-
-For the archived Studio, download/extract `Ultra 3D Studio.zip` from the linked Zenodo record (or use `tools/fetch_studio_assets.py` for resumable range downloads). Register the original weights:
-
-```powershell
-python -m ultra.studio register-studio --source "Ultra 3D Studio" --out studio_assets.json
-```
-
-`--inference-only` permits registration before the three classifier weights are available. Registration records local SHA256 identities; it is not a substitute for archive authenticity checking. The supplied acquisition scripts check ZIP CRC and sizes, and SRS releases check their fixed SHA256 registry. See the final report for actual identities.
-
-### Pilot, batch and recovery
-
-```powershell
-# Exact archived numerical profile, portable execution:
-python -m ultra.studio run --input G5.tif --out results/studio --profile studio --assets studio_assets.json --planes 1,75,150 --device auto
-
-# Explicit exploratory native profile; this is NOT an automatic G5_998 mapping:
-python -m ultra.studio run --input G5.tif --out results/native --profile native-exploratory --weights weights_srs --planes 1,75,150 --device auto
-```
-
-Use `--planes all` for a full stack, `--planes 1:10` for an inclusive contiguous range, or comma-separated increasing ordinals. Use `--protein-stride 64 --he-stride 32` to select SRS dense overlap. The Studio/new launcher defaults to stride 480 (9 patches per 1024 plane), while the older SRS methods use 81/289 patches. **The fast setting changes numerical results** and must not be advertised as an equivalent optimization. The report measures this tradeoff with identical stage inputs.
-
-Append `--resume` to the **identical** command after interruption. Input bytes, profiles, parameters, model hashes, code and device must match; cached planes and finished files are checksummed. A corrupt plane cache is recomputed. A corrupt completed output is rejected. Run manifests retain warnings and failures. Do not edit a stored identity to force reuse.
-
-Each workflow saves preprocessing, denoised lipid, predicted protein, model-input RGB and virtual H&E as OME-TIFF, calibration JSON, stage metrics, checksums, thumbnails and `report.html`. Protein remains a prediction. For unknown Z spacing the output omits physical Z metadata. Sparse selections retain plane positions and are never silently collapsed into a contiguous physical volume. File-relative coordinates are not absolute tissue depth.
-
-### 3D viewer and research classifier
-
-```powershell
-python -m ultra.studio view --input results/native/04_virtual_HE.ome.tif
-python -m ultra.studio view --input contiguous_HE.ome.tif --score score/probability.tif
-python -m ultra.studio score --input HE_at_5um.ome.tif --assets studio_assets.json --out score --tumor glioblastoma --z-spacing 5
-```
-
-`view` opens optional napari with volume rotation, 2D/3D switching, physical scale and optional probability overlay. Nonuniform sparse Z selections are rejected for physical volume rendering; use individual images or a separately documented resampling operation. Without known physical Z the viewer uses voxel coordinates.
-
-Classifier choices are `glioblastoma`, `astrocytoma`, `oligodendroglioma`. These are the original overlapping-window **binary classification probability maps**, not three-way calibrated diagnosis or cell segmentation. The original protocol uses a 10×120×120 patch at 5 µm Z and repeats Z fivefold before its 3D CNN; the upgrade requires that protocol explicitly and checks OME Z coordinates. G5 is 1 µm: use a recorded every-fifth-plane selection, not a false metadata relabel. At least ten correctly spaced planes are required. The upgrade calls `eval()` and explicit softmax dimension, fixing the original train-mode BatchNorm behavior; corrected scoring is therefore intentionally not numerically identical to the original bug. Probability maps are float32; smoothing is applied to float probabilities with the original sigma. No classifier accuracy was assessed on this unlabeled sample.
-
-## What was tested
-
-See `docs/G5_validation.md` and the final report in the parent directory for the actual tested scopes and metrics. The inherited 0.2 GPU reports below describe prior authors' experiments; they are not new validation on this computer. This release does not claim a full 150-plane three-stage run, new training, matched histological ground truth or clinical validation unless explicitly recorded in the report.
-
-## Attribution and distribution
-
-Keep this README, `CITATION.cff`, `THIRD_PARTY_NOTICES.md`, source comments and links with derivative distributions. The Zenodo record lists CC BY 4.0 for its deposit. The inspected GitHub trees have no standalone blanket LICENSE; that fact is recorded separately, and the archive's record-level license is not silently applied to unrelated repositories or dependencies. This upgrade adds no blanket license over third-party code or checkpoints. It makes no claim of original authorship of ULTRA architectures or weights.
-
----
-
-Historical installation and GPU validation notes are preserved in [docs/upstream_README_0.2.md](docs/upstream_README_0.2.md). They describe the prior release, not the current local validation.
+Preserve [CITATION.cff](CITATION.cff), [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), and source attribution in derivative distributions. The Zenodo deposit lists CC BY 4.0; this does not assign a blanket license to separate repositories, weights, or dependencies.

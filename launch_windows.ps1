@@ -1,9 +1,7 @@
+param([string]$Python = (Join-Path $PSScriptRoot '.venv\Scripts\python.exe'))
 $ErrorActionPreference = 'Stop'
-$projectRoot = $PSScriptRoot
-$localPython = Join-Path (Split-Path $projectRoot -Parent) '.venv\Scripts\python.exe'
-if (-not (Test-Path -LiteralPath $localPython)) {
-    Write-Error 'Python environment missing. See README installation instructions.'
-    exit 1
+if (-not (Test-Path -LiteralPath $Python)) {
+    throw 'Python environment missing. Create .venv in the repository or pass -Python with an interpreter path.'
 }
-Set-Location -LiteralPath (Split-Path $projectRoot -Parent)
-& $localPython -m ultra.studio gui
+& $Python -m ultra.studio gui
+if ($LASTEXITCODE -ne 0) { throw 'ULTRA Studio exited with an error.' }

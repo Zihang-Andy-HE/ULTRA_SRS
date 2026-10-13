@@ -1,4 +1,6 @@
-# ULTRA
+# ULTRA (historical v0.2 documentation)
+
+This archived document describes v0.2 behavior. For current installation, device support, and commands, see the [main README](../README.md).
 
 A Linux-first Python package for denoising → lipid-to-protein prediction → virtual staining and 3D orthogonal previews. NVIDIA CUDA is the evaluated inference backend. The optional browser interface can be viewed from Linux, macOS or Windows; computation stays on the Linux host.
 

@@ -1,9 +1,14 @@
-param([ValidateSet('studio','native-exploratory')][string]$Profile='native-exploratory')
+param(
+    [Parameter(Mandatory=$true)][string]$InputTiff,
+    [Parameter(Mandatory=$true)][string]$OutputDirectory,
+    [ValidateSet('studio','native-exploratory')][string]$Profile='native-exploratory',
+    [string]$WeightsDirectory='work/models',
+    [string]$Assets='studio_assets.json',
+    [string]$Planes='1',
+    [string]$Device='auto',
+    [string]$Python=(Join-Path $PSScriptRoot '.venv\Scripts\python.exe')
+)
 $ErrorActionPreference='Stop'
-$workRoot=Split-Path $PSScriptRoot -Parent
-$pythonExe=Join-Path $workRoot '.venv\Scripts\python.exe'
-$runStamp=Get-Date -Format 'yyyyMMdd_HHmmss'
-$resultPath=Join-Path $workRoot ('results\pilot_'+$Profile+'_'+$runStamp)
-& $pythonExe -m ultra.studio run --input (Join-Path $workRoot 'G5.tif') --out $resultPath --profile $Profile --weights (Join-Path $workRoot 'weights_srs') --assets (Join-Path $workRoot 'studio_assets.json') --planes '1,75,150' --device auto
+& $Python -m ultra.studio run --input $InputTiff --out $OutputDirectory --profile $Profile --weights $WeightsDirectory --assets $Assets --planes $Planes --device $Device
 if ($LASTEXITCODE -ne 0) { throw 'ULTRA run failed. Read the error above and workflow.json.' }
-Write-Host "Results: $resultPath"
+Write-Host "Results: $OutputDirectory"

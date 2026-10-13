@@ -1,5 +1,5 @@
 cff-version: 1.2.0
-message: "Cite the original ULTRA paper and Zenodo software deposit; also acknowledge Zihang-Andy-HE/ULTRA_SRS and this local engineering adaptation."
+message: "Cite the original ULTRA paper and Zenodo software deposit; also acknowledge Zihang-Andy-HE/ULTRA_SRS and this engineering adaptation."
 title: "ULTRA_SRS portable research workflow (engineering adaptation)"
 version: 0.3.0
 type: software

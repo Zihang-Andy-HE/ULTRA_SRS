@@ -1,6 +1,6 @@
 # Attribution and terms
 
-## 0.3 local engineering adaptation / original-author credit
+## 0.3 engineering adaptation / original-author credit
 
 The original ULTRA concept, diffusion denoising, lipid-to-protein prediction, virtual histology and classifier models belong to Zhijie Liu and colleagues. Primary source: [Ultrarapid-Deep-3D-Histology](https://github.com/Zhijie-Liu/Ultrarapid-Deep-3D-Histology). Software deposit: [Zenodo 18323493, DOI 10.5281/zenodo.18323493](https://doi.org/10.5281/zenodo.18323493), version ULTRA_3D (2026-01-21). The linked Git tag resolves to `bd16bf31035c4ea9acfb31dd8dbceb64821c4051`; the inspected current main resolves to `e571c7f4e7dd3cf759d31d98c77c2a091213c987`. The Studio ZIP in that deposit is a separate artifact from the GitHub source ZIP.
 
@@ -10,7 +10,7 @@ The Zenodo API metadata labels its deposit **CC BY 4.0**. Preserve author credit
 
 Added derivative components:
 
-| Component | Original source | Local modification |
+| Component | Original source | Modification |
 |---|---|---|
 | `studio_algorithms.py` | Studio `function_preprocess.py`, `function_denoise.py`, `function_protein_prediction.py`, `function_SRH_merge.py`, `function_HE_generation.py` | Callable CPU/CUDA adapters, explicit profiles, input validation, optional batch/stride, safe preprocessing helper; Studio replay preserves original default arithmetic |
 | `vendor/score_model.py` | Studio `unet3d_12g/unet3d.py` | Removed import-time device initialization; retained original header credit to Amir Aghdam and 3D U-Net paper |
