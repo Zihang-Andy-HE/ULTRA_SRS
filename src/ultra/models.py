@@ -14,9 +14,8 @@ def configure(device, tf32=False):
     torch.backends.cudnn.deterministic = True
     if str(device).startswith('cuda'):
         free, total = torch.cuda.mem_get_info(device)
-        if free < 24 * 2**30:
-            raise RuntimeError('Need at least 24 GiB free GPU memory; retry when available')
-        torch.cuda.set_per_process_memory_fraction(.20, device)
+        if free < 2 * 2**30:
+            raise RuntimeError('Less than 2 GiB free GPU memory. Free memory or select CPU.')
 
 
 def load(kind, path, device):

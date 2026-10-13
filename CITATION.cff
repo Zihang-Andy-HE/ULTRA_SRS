@@ -1,0 +1,48 @@
+cff-version: 1.2.0
+message: "Cite the original ULTRA paper and Zenodo software deposit; also acknowledge Zihang-Andy-HE/ULTRA_SRS and this local engineering adaptation."
+title: "ULTRA_SRS portable research workflow (engineering adaptation)"
+version: 0.3.0
+type: software
+repository-code: "https://github.com/Zihang-Andy-HE/ULTRA_SRS"
+authors:
+  - name: "ULTRA_SRS contributors"
+preferred-citation:
+  type: article
+  title: "Ultrarapid deep 3D histology enables intraoperative mapping of glioma infiltration"
+  authors:
+    - family-names: Liu
+      given-names: Zhijie
+    - family-names: Li
+      given-names: Yingying
+    - family-names: Chen
+      given-names: Lingchao
+    - family-names: Wei
+      given-names: Minqian
+    - family-names: Wei
+      given-names: Mian
+    - family-names: Sun
+      given-names: Yuchen
+    - family-names: Wang
+      given-names: Tongqi
+    - family-names: Cheng
+      given-names: Haixia
+    - family-names: Liu
+      given-names: Xing
+    - family-names: Ji
+      given-names: Minbiao
+    - family-names: Shi
+      given-names: Lixue
+  journal: Cell
+  year: 2026
+  volume: 189
+  issue: 20
+  start: 6543
+  end: 6560.e8
+  doi: 10.1016/j.cell.2026.07.026
+references:
+  - type: software
+    title: "Zhijie-Liu/Ultrarapid-Deep-3D-Histology: 20260121"
+    authors:
+      - family-names: Liu
+        given-names: Zhijie
+    doi: 10.5281/zenodo.18323493

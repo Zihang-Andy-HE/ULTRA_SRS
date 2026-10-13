@@ -1,4 +1,5 @@
-import argparse,csv,fcntl,json,os,sys,time,traceback,hashlib,resource
+import argparse,csv,json,os,sys,time,traceback,hashlib
+from .runtime import stage_lock,peak_rss_kib,resolve_device
 from pathlib import Path
 import numpy as np
 import yaml
@@ -38,6 +39,15 @@ def validate_config(cfg):
     if cfg['calibration']['mode']!='v3_pooled_fixed' or cfg['calibration']['bounds']!=[.5,2.]:raise ValueError('Only selected fixed V3 policy is supported')
 
 def run(a):
+    a.device=resolve_device(a.device)
+    out=Path(a.out).resolve()
+    if out.exists() and not a.resume: raise FileExistsError('Output exists; use --resume or a new directory')
+    out.mkdir(parents=True,exist_ok=True)
+    with stage_lock(out/'.lock'):
+        return _run_locked(a)
+
+
+def _run_locked(a):
     out=Path(a.out).resolve();started=time.time();previous=None
     if a.command=='denoise':
         config_path=Path(a.config).resolve();cfg=yaml.safe_load(config_path.read_text());assets=asset_paths(cfg,config_path.parent)
@@ -62,10 +72,8 @@ def run(a):
     if any(v is None for v in m['voxel_size_um'].values()):warnings.append('XY physical size unverified: omitted, no physical aspect claim')
     if m['z_origin_um'] is None:warnings.append('Absolute z origin unknown: depth is relative to first source slice')
     if m['measured_band_cm_1'] is None:warnings.append('Measured Raman band metadata unavailable')
-    if out.exists() and not a.resume:raise FileExistsError('Output exists; use a new directory or --resume')
-    if out.exists() and not (out/'stage.json').exists() and any(out.iterdir()):raise ValueError('Existing files without a stage identity cannot be resumed')
+    if out.exists() and not (out/'stage.json').exists() and any(p.name!='.lock' for p in out.iterdir()):raise ValueError('Existing files without a stage identity cannot be resumed')
     out.mkdir(parents=True,exist_ok=True)
-    lock=(out/'.lock').open('a');fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
     if (out/'stage.json').exists():
         old=json.loads((out/'stage.json').read_text())
         if old['identity']!=identity:raise ValueError('Resume identity mismatch; use a new output directory')
@@ -134,7 +142,7 @@ def run(a):
             (out/'report.html').write_text('<!doctype html><meta charset="utf-8"><h1>ULTRA virtual histology</h1><p>Proxy outputs; no H&amp;E ground truth. See stage.json for QC warnings and metadata.json for measured/missing scales.</p><img width="900" src="qc/preview.png"><img width="900" src="qc/orthogonal.png">')
         with (out/'qc/metrics.csv').open('w') as f:
             w=csv.DictWriter(f,fieldnames=list(metrics[0]));w.writeheader();w.writerows(metrics)
-        state.update(execution_status='complete',qc_status='review_required' if warnings else 'pass',warnings=sorted(set(warnings)),elapsed_seconds=time.time()-started,max_rss_kib=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,gpu_peak_allocated_bytes=torch.cuda.max_memory_allocated() if a.device.startswith('cuda') else 0)
+        state.update(execution_status='complete',qc_status='review_required' if warnings else 'pass',warnings=sorted(set(warnings)),elapsed_seconds=time.time()-started,max_rss_kib=peak_rss_kib(),gpu_peak_allocated_bytes=torch.cuda.max_memory_allocated() if a.device.startswith('cuda') else 0)
         dump(out/'qc/qc.json',{'status':state['qc_status'],'warnings':state['warnings']})
         state['files']={str(p.relative_to(out)):sha(p) for p in out.rglob('*') if p.is_file() and p.name not in ['stage.json','.lock'] and 'cache' not in p.parts and p.suffix!='.tmp'}
         dump(out/'stage.json',state);print('COMPLETE',out,flush=True)
@@ -146,7 +154,7 @@ def main():
     p=argparse.ArgumentParser(description='ULTRA: frozen three-stage inference')
     sub=p.add_subparsers(dest='command',required=True)
     for name in ['denoise','lipid2protein','virtual-stain']:
-        q=sub.add_parser(name);q.add_argument('--out',required=True);q.add_argument('--device',default='cuda:0');q.add_argument('--batch',type=int,default=1);q.add_argument('--resume',action='store_true')
+        q=sub.add_parser(name);q.add_argument('--out',required=True);q.add_argument('--device',default='auto');q.add_argument('--batch',type=int,default=1);q.add_argument('--resume',action='store_true')
         if name=='denoise':
             for k in ['input','metadata','config']:q.add_argument('--'+k,required=True)
         else:q.add_argument('--from',dest='from_dir',required=True)
