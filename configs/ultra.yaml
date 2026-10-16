@@ -14,7 +14,7 @@
       "sha256": "c49523742f7295ec19f9f4d1e889d3cbbd9a62d8f4dd27a0770d824e4f804e2f"
     },
     "reference": {
-      "path": "../references/v3_reference.json",
+      "path": "../references/visual_reference.json",
       "sha256": "fe0ad6eddc346f9e0297451692dd357a4fa023d30eec431c1d7e141c66bd2b31"
     }
   },

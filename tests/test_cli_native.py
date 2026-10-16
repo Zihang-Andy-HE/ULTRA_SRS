@@ -16,7 +16,7 @@ def prepare(tmp_path):
     for kind, spec in config['assets'].items():
         path = tmp_path / ('asset_'+kind)
         if kind == 'reference':
-            path.write_bytes((ROOT/'references/v3_reference.json').read_bytes())
+            path.write_bytes((ROOT/'references/visual_reference.json').read_bytes())
         else:
             path.write_bytes(b'synthetic test asset')
         spec.update(path=str(path), sha256=sha(path))
