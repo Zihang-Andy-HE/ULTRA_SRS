@@ -30,7 +30,7 @@
     "precision": "FP32 TF32 allowed",
     "gain": 16.003663003663004,
     "offset": 0,
-    "t": 10
+    "t": 4
   },
   "lipid2protein": {
     "checkpoint_key": "G",
