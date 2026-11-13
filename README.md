@@ -108,6 +108,3 @@ Original methods and pretrained models: [Zhijie Liu et al., Ultrarapid-Deep-3D-H
 
 > Liu, Z., Li, Y., Chen, L., Wei, M., Wei, M., Sun, Y., Wang, T., Cheng, H., Liu, X., Ji, M., and Shi, L. (2026). *Ultrarapid deep 3D histology enables intraoperative mapping of glioma infiltration*. Cell 189(20), 6543–6560.e8. https://doi.org/10.1016/j.cell.2026.07.026
 
-The integration builds on ULTRA_SRS commit `98ca5078c6f8c39b41da1910b7ac7981894166c7`, including its tensor-only checkpoints, inference adapters, pooled V3 calibration, manual preview, and stage manifests. No original-author endorsement or improved diagnostic accuracy is claimed.
-
-Preserve [CITATION.cff](CITATION.cff), [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), and source attribution in derivative distributions. The Zenodo deposit lists CC BY 4.0; this does not assign a blanket license to separate repositories, weights, or dependencies.
