@@ -1,4 +1,4 @@
-# ULTRA_SRS 0.3
+# ULTRA_SRS 
 
 **Command-line SRS processing: denoise → lipid-to-protein prediction → virtual H&E staining.**
 
